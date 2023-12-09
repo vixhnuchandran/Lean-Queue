@@ -13,6 +13,7 @@ require("dotenv").config()
  */
 router.post("/create-queue", async (req, res) => {
   const { type, tasks } = req.body
+
   try {
     if (!type) {
       return res.status(400).json({ error: `type not specified` })
@@ -27,7 +28,7 @@ router.post("/create-queue", async (req, res) => {
     return res.json({ queue: id, numTasks })
   } catch (error) {
     console.error(
-      colorize(`Error in route  for create-queue: ${error.message}`, "red")
+      colorize(`Error in route for create-queue: ${error.message}`, "red")
     )
     return res.status(500).json({ error: "Internal server error" })
   }

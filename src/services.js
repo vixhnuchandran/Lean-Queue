@@ -1,10 +1,15 @@
 const { colorize } = require("./utils")
 const { client } = require("./database")
+const { validateQueue, validateTasks } = require("./validations")
 
 const createQueues = async type => {
   try {
+    const isValid = validateQueue(type)
+    if (!isValid) {
+      throw new Error("Error type format")
+    }
     const result = await client.query(
-      "INSERT INTO queues (type) VALUES ($1) ON CONFLICT (type) DO NOTHING RETURNING id;",
+      "INSERT INTO queues (type) VALUES ($1) ON CONFLICT (type) DO UPDATE SET type = $1 RETURNING id;",
       [type]
     )
     return result.rows[0].id
@@ -16,9 +21,14 @@ const createQueues = async type => {
 
 const addTasks = async (id, tasks) => {
   try {
+    const isValid = validateTasks(tasks)
+    console.log("failed Tasks: ", isValid)
+    if (isValid.length !== 0) {
+      throw new Error("Error task format")
+    }
     await Promise.all(
-      Object.entries(tasks).map(async ([taskid, params]) => {
-        await addTask(taskid, params, id)
+      Object.entries(tasks).map(([taskid, params]) => {
+        addTask(taskid, params, id)
       })
     )
     return Object.keys(tasks).length
