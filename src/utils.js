@@ -1,5 +1,4 @@
 const seedrandom = require("seedrandom")
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const colors = {
   reset: "\x1b[0m",
@@ -11,17 +10,22 @@ const colors = {
   cyan: "\x1b[36m",
 }
 
-const colorize = (text, color) => {
+const setColor = (text, color) => {
   return `${colors[color]}${text}${colors.reset}`
 }
 
-const getRandomDelay = (min, max, seed) => {
-  const rng = seedrandom(seed)
-  const randomValue = rng()
-  const delayRange = max - min + 1
-  const randomDelay = Math.floor(randomValue * delayRange) + min
+const red = text => setColor(text, "red")
+const green = text => setColor(text, "green")
+const yellow = text => setColor(text, "yellow")
+const blue = text => setColor(text, "blue")
+const magenta = text => setColor(text, "magenta")
+const cyan = text => setColor(text, "cyan")
 
-  return randomDelay
+module.exports = {
+  red,
+  green,
+  yellow,
+  blue,
+  magenta,
+  cyan,
 }
-
-module.exports = { delay, colorize, getRandomDelay }
