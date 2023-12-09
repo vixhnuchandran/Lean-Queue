@@ -1,7 +1,7 @@
 const express = require("express")
-require("dotenv").config()
 const pool = require("./db")
 const routes = require("./routes")
+require("dotenv").config()
 
 const app = express()
 
