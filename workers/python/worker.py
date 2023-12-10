@@ -17,8 +17,6 @@ def get_next_task(queue=None, operation_type=None):
 
         response = requests.post(root + "/get-available-tasks", json=request_body)
 
-        response.raise_for_status()
-
         data = response.json()
         return data
     except Exception as error:
@@ -30,7 +28,6 @@ def send_results(task_id, result, end_time, error):
             root + "/submit-results",
             json={"id": task_id, "endTime": end_time, "result": result, "error": error},
         )
-        response.raise_for_status()
         return response
     except Exception as error:
         print("Error while sending result:", error)
@@ -43,7 +40,7 @@ def run_worker():
             print(f"\nFetching tasks...")
             input("Press Enter to processing...")
 
-            response = get_next_task(operation_type=operation_type)
+            response = get_next_task(operation_type)
 
             if response is None:
                 print("\nNo tasks found, worker going sleep mode")
