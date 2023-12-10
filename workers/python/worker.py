@@ -4,6 +4,7 @@ import requests
 from random import randint
 
 root = "http://127.0.0.1:8383"
+quick_execute = False  # Fixed variable name 'quick_execute' and set it to False
 
 def execute_task(num1, num2, operation_type):
     if operation_type == "addition":
@@ -38,12 +39,13 @@ def run_worker():
 
         try:
             print(f"\nFetching tasks...")
-            input("Press Enter to processing...")
+            if quick_execute:
+                input("Press Enter to start processing...")
 
-            response = get_next_task(operation_type)
+            response = get_next_task(operation_type=operation_type)
 
             if response is None:
-                print("\nNo tasks found, worker going sleep mode")
+                print("\nNo tasks found, worker going to sleep mode")
                 time.sleep(20)
                 continue
 
@@ -51,26 +53,23 @@ def run_worker():
 
             task_id, params = response["id"], response["params"]
             num1, num2 = params["num1"], params["num2"]
-            input("Press Enter to execute...")
+            if quick_execute:
+                input("Press Enter to execute...")
             result = execute_task(num1, num2, operation_type)
 
             print("Task completed successfully")
 
-            input("Press Enter to submit...")
+            if quick_execute:
+                input("Press Enter to submit...")
 
             if result:
                 send_results(task_id, result, None, None)
                 print("Results submitted successfully")
-            elif error:
-                send_results(task_id, result, error)
-                print("Results submitted successfully")
             else:
-                print(f"Error sending results: {error}")
+                print(f"Error sending results: {result}")
 
         except Exception as error:
             print("Error in run_worker:", error)
-
-
 
 if __name__ == "__main__":
     run_worker()
