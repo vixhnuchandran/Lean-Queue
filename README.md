@@ -1,6 +1,6 @@
-# TaskHandler
+# LeanQueue
 
-TaskHandler is a Node.js application designed to manage task queues. It uses Express as a web framework and PostgreSQL for data storage.
+LeanQueue is a Node.js application designed to manage task queues. It uses Express as a web framework and PostgreSQL for data storage.
 
 ## Features
 
@@ -28,8 +28,8 @@ TaskHandler is a Node.js application designed to manage task queues. It uses Exp
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/TaskHandler.git
-   cd TaskHandler
+   git clone https://github.com/vixhnuchandran/lean-queue
+   cd lean-queue
    ```
 
 2. Install dependencies:
