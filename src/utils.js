@@ -10,22 +10,35 @@ const colors = {
   cyan: "\x1b[36m",
 }
 
-const setColor = (text, color) => {
+const colorize = (text, color) => {
   return `${colors[color]}${text}${colors.reset}`
 }
 
-const red = text => setColor(text, "red")
-const green = text => setColor(text, "green")
-const yellow = text => setColor(text, "yellow")
-const blue = text => setColor(text, "blue")
-const magenta = text => setColor(text, "magenta")
-const cyan = text => setColor(text, "cyan")
+const red = text => colorize(text, "red")
+const green = text => colorize(text, "green")
+const yellow = text => colorize(text, "yellow")
+const blue = text => colorize(text, "blue")
+const magenta = text => colorize(text, "magenta")
+const cyan = text => colorize(text, "cyan")
+
+/**
+ * Logs a message using the specified console method and text color.
+ *
+ * @param {string} consoleMethod - The console method to use ("log", "error", "warn", "info").
+ * @param {function} textColor - The function that provides the text color.
+ * @param {string} consoleMessage - The console message to be logged.
+ * @param {...any} args - For future usage.
+ */
+const customLogger = (consoleMethod, consoleMessage, ...args) => {
+  console[consoleMethod](consoleMessage)
+}
+
+
+const logError = (errorMessage, ...args) => {
+  console.log(red(errorMessage))
+}
 
 module.exports = {
+  logError,
   red,
-  green,
-  yellow,
-  blue,
-  magenta,
-  cyan,
 }
