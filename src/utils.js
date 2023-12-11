@@ -34,10 +34,6 @@ const customLogger = (consoleMethod, color, consoleMessage, ...args) => {
   console[consoleMethod](color(consoleMessage))
 }
 
-const logError = (errorMessage, ...args) => {
-  console.error(red(errorMessage))
-}
-
 module.exports = {
   customLogger,
   red,
