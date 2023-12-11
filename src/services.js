@@ -1,203 +1,299 @@
-const { colorize } = require("./utils")
-const { client } = require("./database")
-const { validateQueue, validateTasks } = require("./validations")
+const { performance } = require("perf_hooks")
+const format = require("pg-format")
+const { red } = require("./utils")
+const pool = require("./db")
+class Services {
+  constructor() {
+    this.pool = pool
+    this.client = null
+  }
+  // ✅
+  async createQueueAndAddTasks(type, options, tasks) {
+    try {
+      this.client = this.pool
 
-const createQueues = async type => {
-  try {
-    const isValid = validateQueue(type)
-    if (!isValid) {
-      throw new Error("Error type format")
+      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      await this.client.query("BEGIN")
+
+      const queue = await this.createQueue(type, options)
+      const numTasks = await this.addTasks(queue, tasks, options)
+
+      await this.client.query("COMMIT")
+      return { queue, numTasks }
+    } catch (err) {
+      await this.client.query("ROLLBACK")
+      console.log(err)
     }
-    const result = await client.query(
-      "INSERT INTO queues (type) VALUES ($1) ON CONFLICT (type) DO UPDATE SET type = $1 RETURNING id;",
-      [type]
-    )
-    return result.rows[0].id
-  } catch (error) {
-    console.error("Error in createQueues:", error.message)
-    throw new Error("Failed to create or find the queue.")
   }
-}
 
-const addTasks = async (id, tasks) => {
-  try {
-    const isValid = validateTasks(tasks)
-    console.log("failed Tasks: ", isValid)
-    if (isValid.length !== 0) {
-      throw new Error("Error task format")
-    }
-    await Promise.all(
-      Object.entries(tasks).map(([taskid, params]) => {
-        addTask(taskid, params, id)
-      })
-    )
-    return Object.keys(tasks).length
-  } catch (error) {
-    console.error(`Error in addTasks: ${error.message}`)
-    throw new Error("Failed to create tasks.")
-  }
-}
+  // ✅
+  async createQueue(type, options) {
+    this.client = this.pool
 
-const addTask = async (taskid, params, queueId) => {
-  try {
-    await client.query(
-      "INSERT INTO tasks (taskid, params, queueid) VALUES ($1, $2, $3)",
-      [taskid, JSON.stringify(params), queueId]
-    )
-  } catch (error) {
-    console.error(`Error in addTask: ${error.stack}`)
-    throw new Error("Failed to add task to the queue.")
-  }
-}
+    try {
+      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
 
-const getNextTaskByQueue = async queue => {
-  let data
-  await client.query("BEGIN")
-  try {
-    const result = await client.query(
-      "SELECT * FROM tasks WHERE queueid = $1  AND (status = $2 OR (status = $3 AND expiryTime < NOW())) LIMIT 1 FOR UPDATE SKIP LOCKED;",
-      [queue.id, "available", "processing"]
-    )
-
-    data = result.rows[0]
-
-    if (data) {
-      const startTime = new Date()
-      const expiryTime = new Date(startTime.getTime() + 15000) // + 15 seconds
-
-      await client.query(
-        "UPDATE tasks SET status = $1, startTime = $2, expiryTime = $3 WHERE id = $4",
-        ["processing", startTime, expiryTime, data.id]
+      const result = await this.client.query(
+        `INSERT INTO queues (type, options) 
+      VALUES ($1,$2) 
+      RETURNING id;`,
+        [type, options]
       )
+      const queue = result.rows[0].id
+      return queue
+    } catch (err) {
+      console.log(err.message)
     }
-
-    await client.query("COMMIT")
-  } catch (error) {
-    await client.query("ROLLBACK")
-    console.error(`Error in getNextTaskByQueue: ${error.message}`)
-    throw new Error("Failed to get the next task by queue.")
   }
 
-  return data
-}
+  // ✅
+  async addTasks(queue, tasks, options) {
+    try {
+      this.client = this.pool
 
-const getNextTaskByType = async type => {
-  let data
+      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
 
-  await client.query("BEGIN")
+      const expiryTime = new Date()
+      expiryTime.setTime(expiryTime.getTime() + options.expiryTime)
+      const batchSize = 5
+      const totalEntries = Object.entries(tasks)
+      const totalBatches = Math.ceil(totalEntries.length / batchSize)
 
-  try {
-    const queueResult = await client.query(
-      "SELECT id FROM queues WHERE type = $1 LIMIT 1",
-      [type]
-    )
+      for (let i = 0; i < totalBatches; i++) {
+        const batchStart = i * batchSize
+        const batchEnd = (i + 1) * batchSize
+        const batch = totalEntries
+          .slice(batchStart, batchEnd)
+          .map(([taskId, params]) => {
+            return [taskId, params, expiryTime, queue]
+          })
 
-    if (queueResult.rows.length > 0) {
-      const queueId = queueResult.rows[0].id
+        await this.addTasksByBatch(batch, options)
+      }
+      return totalEntries.length
+    } catch (err) {
+      console.log(err)
+    }
+  }
 
-      const result = await client.query(
-        "SELECT * FROM tasks WHERE queueid = $1 AND (status = $2 OR (status = $3 AND expiryTime < NOW())) LIMIT 1 FOR UPDATE SKIP LOCKED;",
-        [queueId, "available", "processing"]
+  // ✅
+  async addTasksByBatch(batch) {
+    console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+
+    this.client = this.pool
+
+    try {
+      await this.client.query(
+        format(
+          `INSERT INTO tasks (task_id, params, expiry_time, queue_id) VALUES %L`,
+          batch
+        )
+      )
+    } catch (err) {
+      console.error(`Error in addTasksByBatch: ${err}`)
+      throw new Error("Failed to add task to the queue.")
+    }
+  }
+
+  async getNextAvailableTaskByQueue(queue) {
+    let data
+    this.client = this.pool
+
+    try {
+      await this.client.query("BEGIN")
+
+      const result = await this.client.query(
+        `SELECT * FROM tasks 
+      WHERE queue_id = ${queue.id}  AND 
+        (status = "available" OR (status = "processing" AND expiry_time < NOW())) 
+      LIMIT 1 
+      FOR UPDATE SKIP LOCKED;`
+      )
+      data = result.rows[0]
+      if (!data) {
+        console.error("No tasks availabe right now!")
+      } else if (data) {
+        const startTime = new Date()
+
+        await this.client.query(
+          `UPDATE tasks SET status = "processing", start_time = ${startTime} WHERE id = ${data.id}`
+        )
+      }
+      await this.client.query("COMMIT")
+    } catch (error) {
+      await this.client.query("ROLLBACK")
+
+      console.error(`Error in getNextTaskByQueue: ${error.message}`)
+      throw new Error("Failed to get the next task by queue.")
+    }
+
+    return data
+  }
+
+  async getNextAvailableTaskByType(type) {
+    let data
+
+    try {
+      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      this.client = this.pool
+
+      await this.client.query("BEGIN")
+      const result = await this.client.query(
+        `
+        SELECT tasks.*
+        FROM tasks
+        JOIN queues ON tasks.queue_id = queues.id
+        WHERE queues.type = $1
+          AND (tasks.status = 'available' OR (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED;
+      `,
+        [type]
       )
 
       data = result.rows[0]
 
-      if (data) {
+      if (!data) {
+        console.error("No tasks availabe right now!")
+      } else if (data) {
         const startTime = new Date()
-        const expiryTime = new Date(startTime.getTime() + 2 * 60 * 1000) // + 2 minutes
 
-        await client.query(
-          "UPDATE tasks SET status = $1, startTime = $2, expiryTime = $3 WHERE id = $4",
-          ["processing", startTime, expiryTime, data.id]
+        await this.client.query(
+          `UPDATE tasks SET status = 'processing', start_time = $1 WHERE id = $2;`,
+          [startTime, data.id]
         )
+
+        await this.client.query("COMMIT")
       }
-    }
-
-    await client.query("COMMIT")
-  } catch (error) {
-    await client.query("ROLLBACK")
-    console.error(`${colors.red}Error in getNextTaskByType: ${error.message}`)
-    throw new Error("Failed to get the next task by type.")
-  }
-
-  return data
-}
-
-const getNextTasks = async ({ queue, type }) => {
-  let data = null
-
-  try {
-    if (queue) {
-      data = await getNextTaskByQueue(queue)
-    }
-    if (type) {
-      data = await getNextTaskByType(type)
+    } catch (error) {
+      await this.client.query("ROLLBACK")
+      console.error(`Error in getNextTaskByType: ${error.message}`)
+      throw new Error(`Error in getNextTaskByType: ${error.message}`)
     }
     return data
-  } catch (error) {
-    console.log(colorize(`Error in getNextTasks: ${error.stack}`, "red"))
   }
-}
 
-const submitResults = async ({ id, result, error }) => {
-  const endTime = new Date()
-  let isFinished = false
-  let total,
-    finished,
-    response = null
-  try {
-    if (error) {
-      response = await client.query(
-        "UPDATE tasks SET status = $1, endTime = $2, result = $3 WHERE id = $4 RETURNING queueid",
-        ["error", endTime, { result: { sum: null, error } }, id]
-      )
-      return response
-    } else if (result) {
-      response = await client.query(
-        "UPDATE tasks SET status = $1, endTime = $2, result = $3 WHERE id = $4 RETURNING queueid",
-        ["completed", endTime, { result: { sum: result, error: null } }, id]
-      )
-      const queue = response.rows[0].queueid
-      if (queue) {
-        total = await totalTasksCount(queue)
-        finished = await finishedTasksCount(queue)
-      }
+  async submitResults({ id, result, error = null }) {
+    this.client = this.pool
 
-      if (
-        JSON.stringify(total.rows[0].count) ===
-        JSON.stringify(finished.rows[0].count)
-      ) {
-        isFinished = true
+    try {
+      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+
+      const endTime = new Date()
+
+      const resultObj = error ? { sum: null, error } : { sum: result, error }
+
+      const response = await this.client.query(
+        `
+      UPDATE tasks 
+      SET 
+        status = CASE
+          WHEN $1::jsonb IS NOT NULL THEN 'error'::task_status
+          ELSE 'completed'::task_status
+        END,
+        end_time = $2,
+        result = CASE
+          WHEN $1::jsonb IS NOT NULL THEN $1::jsonb
+          ELSE $3::jsonb
+        END
+      FROM queues
+      WHERE tasks.id = $4 AND queues.id = tasks.queue_id
+      RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
+    `,
+        [error, endTime, resultObj, id]
+      )
+
+      const queue = response.rows[0].queue_id
+      const callbackUrl = response.rows[0].callback_url
+      console.log("queue", queue, "url", callbackUrl)
+      if (await this.allTasksCompleted(queue)) {
+        if (callbackUrl) {
+          const results = await this.getResults(queue)
+          console.log(results)
+
+          await this.postResults(callbackUrl, results)
+        }
       }
-      return isFinished
+      return
+    } catch (error) {
+      console.error(red(`Error in submitResults: ${error.message}`))
+      throw new Error(`Error in submitResults: ${error.message}`)
     }
-  } catch (error) {
-    console.error(colorize(`Error in submitResults: ${error.message}`, "red"))
-    throw new Error(`Error in submitResults: ${error.message}`)
+  }
+
+  async getResults(queue) {
+    try {
+      this.client = this.pool
+      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+
+      const response = await this.client.query(
+        `
+      SELECT task_id, result
+      FROM tasks
+      WHERE status IN ('completed', 'error') AND queue_id = ${queue};
+       `
+      )
+      const results = {}
+      response.rows.forEach(row => {
+        results[row.task_id] = row.result
+      })
+
+      return { results }
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  async postResults(url, results) {
+    try {
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(results),
+        timeout: 20000,
+      })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  async totalTaskCountInQueue(queue) {
+    this.client = this.pool
+
+    const response = await this.client.query(
+      `SELECT COUNT(*) FROM tasks WHERE queue_id = ${queue}`
+    )
+    return response
+  }
+
+  async completedTaskCountInQueue(queue) {
+    this.client = this.pool
+
+    const response = await this.client.query(
+      `SELECT COUNT(*) FROM tasks WHERE queue_id = ${queue} AND status IN ('completed', 'error')`
+    )
+    return response
+  }
+
+  async allTasksCompleted(queue) {
+    let areCompleted = false,
+      totalTasks,
+      completedTasks
+    if (queue) {
+      totalTasks = await this.totalTaskCountInQueue(queue)
+      completedTasks = await this.completedTaskCountInQueue(queue)
+    }
+    if (totalTasks.rows[0].count === completedTasks.rows[0].count) {
+      areCompleted = true
+    }
+    console.log(
+      `total: ${totalTasks.rows[0].count} , completed: ${completedTasks.rows[0].count}`
+    )
+    console.log("areCompleted:", areCompleted)
+    return areCompleted
   }
 }
 
-const totalTasksCount = async queue => {
-  const response = await client.query(
-    "SELECT COUNT(*) FROM tasks WHERE queueid = $1",
-    [queue]
-  )
-  return response
-}
-
-const finishedTasksCount = async queue => {
-  const response = await client.query(
-    "SELECT COUNT(*) FROM tasks WHERE queueid = $1 AND status IN ('completed', 'error')",
-    [queue]
-  )
-  return response
-}
-
-module.exports = {
-  createQueues,
-  addTasks,
-  getNextTasks,
-  submitResults,
-  totalTasksCount,
-  finishedTasksCount,
-}
+module.exports = new Services()
