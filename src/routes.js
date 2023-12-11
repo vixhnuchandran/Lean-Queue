@@ -155,16 +155,21 @@ router.get("/get-results/:queue", async (req, res) => {
   const queue = req.params.queue
 
   // VALIDATION
-
   try {
-    // check queue is valid
-    // check queue in db
+    if (!queue || isNaN(parseInt(queue))) {
+      throw new QueueError("Missing queue or Invalid queue")
+    }
+
+    const isPresent = await Services.isQueuePresent(parseInt(queue))
+    if (queue && !(await Services.isQueuePresent(parseInt(queue)))) {
+      throw new ValidationError("Invalid queue")
+    }
   } catch (err) {
     if (err instanceof ValidationError) {
-      customLogger("error", red, "ValidationError: Invalid queue parameters")
+      customLogger("error", red, "ValidationError: Invalid queue")
       return res.status(400).json({ error: err.message })
     } else if (err instanceof QueueError) {
-      customLogger("error", red, "QueueError")
+      customLogger("error", red, "QueueError: Missing queue")
       return res.status(400).json({ error: err.message })
     } else {
       customLogger("error", red, "Unknown Error:", err)
