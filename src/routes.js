@@ -8,7 +8,14 @@ const {
   magenta,
   cyan,
 } = require("./utils")
-const Services = require("./services")
+const {
+  addTasks,
+  createQueueAndAddTasks,
+  getNextAvailableTaskByQueue,
+  getNextAvailableTaskByType,
+  submitResults,
+  getResults,
+} = require("./services")
 const {
   areQueueParametersValid,
   isQueueIdValid,
@@ -25,19 +32,22 @@ const INTERNAL_SERVER_ERROR = "Internal server error"
  */
 router.post("/create-queue", async (req, res) => {
   const { type, tasks, options = null } = req.body
-
+  client = req.dbClient
   // VALIDATION
   try {
     if (!type) {
       throw new QueueError("Missing type")
-    } else if (!tasks) {
+    }
+    if (!tasks) {
       throw new QueueError("Missing tasks")
-    } else if (!areQueueParametersValid(type, tasks, options)) {
+    }
+    if (!areQueueParametersValid(type, tasks, options)) {
       throw new ValidationError("Invalid tasks")
     }
-
-    // TODO options validation
-  } catch (error) {
+    if (options && !areOptionsValid(options)) {
+      throw new ValidationError("Invalid options")
+    }
+  } catch (err) {
     if (err instanceof ValidationError) {
       customLogger("error", red, "ValidationError: Invalid queue parameters")
       return res.status(400).json({ error: err.message })
@@ -48,19 +58,21 @@ router.post("/create-queue", async (req, res) => {
       customLogger("error", red, "Unknown Error: ", err.message)
     }
   }
-
   // PROCESSING
   try {
-    const { queue, numTasks } = await Services.createQueueAndAddTasks(
+    const { queue, numTasks } = await createQueueAndAddTasks(
       type,
       options,
       tasks
     )
-
     return res.json({ queue, numTasks })
   } catch (err) {
     customLogger("error", red, "Unknown Error: ", err.message)
     return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
+  } finally {
+    if (req.dbClient) {
+      req.dbClient.release()
+    }
   }
 })
 
@@ -69,39 +81,46 @@ router.post("/create-queue", async (req, res) => {
  */
 router.post("/add-tasks", async (req, res) => {
   const { queue, tasks, options } = req.body
-
+  client = req.dbClient
   // VALIDATION
   try {
     if (!queue) {
       throw new QueueError("Missing queue")
-    } else if (!tasks) {
+    }
+    if (!tasks) {
       throw new QueueError("Missing tasks")
-    } else if (queue && !isQueueIdValid(queue)) {
+    }
+    if (queue && !isQueueIdValid(queue)) {
       throw new ValidationError("Invalid queue")
-    } else if (tasks && !areAllTasksValid(tasks)) {
+    }
+    if (tasks && !areAllTasksValid(tasks)) {
       throw new ValidationError("Invalid tasks")
     }
-
-    // TODO options validation
+    if (options && !areOptionsValid(options)) {
+      throw new ValidationError("Invalid options")
+    }
   } catch (err) {
     if (err instanceof ValidationError) {
       customLogger("error", red, "ValidationError: Invalid queue parameters")
       return res.status(400).json({ error: err.message })
     } else if (err instanceof QueueError) {
-      customLogger("error", red, "QueueError")
+      customLogger("error", red, "QueueError: Missing queue")
       return res.status(400).json({ error: err.message })
     } else {
       customLogger("error", red, "Unknown Error:", err)
     }
   }
-
   // PROCESSING
   try {
-    const numTasks = await Services.addTasks(queue, tasks, options)
+    const numTasks = await addTasks(queue, tasks, options)
     return res.json({ numTasks })
   } catch (err) {
     customLogger("error", red, "Unknown Error:", err)
     return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
+  } finally {
+    if (req.dbClient) {
+      req.dbClient.release()
+    }
   }
 })
 
@@ -110,7 +129,7 @@ router.post("/add-tasks", async (req, res) => {
  */
 router.post("/get-next-available-task", async (req, res) => {
   const { queue, type } = req.body
-
+  client = req.dbClient
   // VALIDATION
   try {
     if (!queue && !type) {
@@ -131,14 +150,18 @@ router.post("/get-next-available-task", async (req, res) => {
       customLogger("error", red, "Unknown Error:", err)
     }
   }
-
   // PROCESSING
   try {
     let nextAvailableTask
     if (queue) {
-      nextAvailableTask = await Services.getNextAvailableTaskByQueue(queue)
+      nextAvailableTask = await getNextAvailableTaskByQueue(queue)
     } else if (type) {
-      nextAvailableTask = await Services.getNextAvailableTaskByType(type)
+      nextAvailableTask = await getNextAvailableTaskByType(type)
+    }
+    if (!nextAvailableTask) {
+      return res.status(200).json({
+        message: "No available task found",
+      })
     }
     return res.status(200).json({
       id: nextAvailableTask.id,
@@ -147,6 +170,10 @@ router.post("/get-next-available-task", async (req, res) => {
   } catch (err) {
     customLogger("error", red, "Unknown Error:", err)
     return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
+  } finally {
+    if (req.dbClient) {
+      req.dbClient.release()
+    }
   }
 })
 
@@ -155,14 +182,14 @@ router.post("/get-next-available-task", async (req, res) => {
  */
 router.get("/get-results/:queue", async (req, res) => {
   const queue = req.params.queue
-
+  client = req.dbClient
   // VALIDATION
   try {
     if (!queue || isNaN(parseInt(queue))) {
       throw new QueueError("Missing queue or Invalid queue")
     }
 
-    const isQueue = await Services.isQueuePresent(parseInt(queue))
+    const isQueue = await isQueuePresent(parseInt(queue))
     if (queue && !isQueue) {
       throw new ValidationError("Invalid queue")
     }
@@ -174,13 +201,12 @@ router.get("/get-results/:queue", async (req, res) => {
       customLogger("error", red, "QueueError: Missing queue")
       return res.status(400).json({ error: err.message })
     } else {
-      customLogger("error", red, "Unknown Error:", err)
+      customLogger("error", red, "Unknown Error:", err.message)
     }
   }
-
   // PROCESSING
   try {
-    const response = await Services.getResults(queue)
+    const response = await getResults(queue)
     customLogger("error", red, response)
     if (Object.keys(response.results).length === 0) {
       return res.status(400).json({ message: "No completed tasks found" })
@@ -190,6 +216,10 @@ router.get("/get-results/:queue", async (req, res) => {
   } catch (err) {
     customLogger("error", red, "Unknown Error:", err)
     return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
+  } finally {
+    if (req.dbClient) {
+      req.dbClient.release()
+    }
   }
 })
 
@@ -198,22 +228,21 @@ router.get("/get-results/:queue", async (req, res) => {
  */
 router.post("/submit-results", async (req, res) => {
   const { id, result, error } = req.body
-
+  client = req.dbClient
   // TODO {id,result, error} validation
   try {
   } catch {}
-
   try {
-    const response = await Services.submitResults({ id, result, error })
-    customLogger("error", red, response)
-    if (response) {
-      console.log(green("All jobs finished"))
-    }
+    await submitResults({ id, result, error })
     res.send({ ok: true })
     return
   } catch (err) {
     customLogger("error", red, "Unknown Error:", err)
     return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
+  } finally {
+    if (req.dbClient) {
+      req.dbClient.release()
+    }
   }
 })
 
