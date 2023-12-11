@@ -25,20 +25,25 @@ const cyan = text => colorize(text, "cyan")
  * Logs a message using the specified console method and text color.
  *
  * @param {string} consoleMethod - The console method to use ("log", "error", "warn", "info").
- * @param {function} textColor - The function that provides the text color.
+ * @param {function} color - available ("red" "green", "yellow", "blue", "magenta", "cyan").
  * @param {string} consoleMessage - The console message to be logged.
  * @param {...any} args - For future usage.
+ * eg: customLogger("log", green, `Hello`)
  */
-// const customLogger = (consoleMethod, consoleMessage, ...args) => {
-//   console[consoleMethod](consoleMessage)
-// }
-
+const customLogger = (consoleMethod, color, consoleMessage, ...args) => {
+  console[consoleMethod](color(consoleMessage))
+}
 
 const logError = (errorMessage, ...args) => {
-  console.log(red(errorMessage))
+  console.error(red(errorMessage))
 }
 
 module.exports = {
-  logError,
+  customLogger,
   red,
+  green,
+  yellow,
+  blue,
+  magenta,
+  cyan,
 }
