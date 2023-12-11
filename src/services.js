@@ -10,6 +10,7 @@ const {
   cyan,
 } = require("./utils")
 const pool = require("./db")
+
 class Services {
   constructor() {
     this.pool = pool
@@ -118,6 +119,7 @@ class Services {
     }
   }
 
+  // ✅
   async getNextAvailableTaskByQueue(queue) {
     let data
     this.client = this.pool
@@ -156,6 +158,7 @@ class Services {
     return data
   }
 
+  // ✅
   async getNextAvailableTaskByType(type) {
     let data
 
@@ -202,6 +205,7 @@ class Services {
     return data
   }
 
+  // ✅
   async submitResults({ id, result, error = null }) {
     this.client = this.pool
 
@@ -255,6 +259,7 @@ class Services {
     }
   }
 
+  // ✅
   async getResults(queue) {
     try {
       this.client = this.pool
@@ -282,6 +287,7 @@ class Services {
     }
   }
 
+  // ✅
   async postResults(url, results) {
     try {
       await fetch(url, {
@@ -297,6 +303,7 @@ class Services {
     }
   }
 
+  // ✅
   async totalTaskCountInQueue(queue) {
     this.client = this.pool
 
@@ -306,6 +313,7 @@ class Services {
     return response
   }
 
+  // ✅
   async completedTaskCountInQueue(queue) {
     this.client = this.pool
 
@@ -315,6 +323,7 @@ class Services {
     return response
   }
 
+  // ✅
   async allTasksCompleted(queue) {
     let areCompleted = false,
       totalTasks,
@@ -328,6 +337,33 @@ class Services {
     }
 
     return areCompleted
+  }
+
+  // ✅
+  async isQueuePresent(queue) {
+    let isPresent = false
+    try {
+      this.client = this.pool
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
+
+      const response = await this.client.query(
+        `
+      SELECT *
+      FROM queues
+      WHERE id = ${queue};
+       `
+      )
+      if (response.rows[0].id) {
+        isPresent = true
+      }
+      return isPresent
+    } catch (err) {
+      customLogger("error", red, `Error in isQueuePresent: ${err.message}`)
+    }
   }
 }
 
