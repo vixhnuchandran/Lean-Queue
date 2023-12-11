@@ -36,7 +36,7 @@ router.post("/create-queue", async (req, res) => {
       throw new ValidationError("Invalid tasks")
     }
 
-    // Options Valid
+    // TODO options validation
   } catch (error) {
     if (err instanceof ValidationError) {
       customLogger("error", red, "ValidationError: Invalid queue parameters")
@@ -81,6 +81,8 @@ router.post("/add-tasks", async (req, res) => {
     } else if (tasks && !areAllTasksValid(tasks)) {
       throw new ValidationError("Invalid tasks")
     }
+
+    // TODO options validation
   } catch (err) {
     if (err instanceof ValidationError) {
       customLogger("error", red, "ValidationError: Invalid queue parameters")
@@ -197,7 +199,7 @@ router.get("/get-results/:queue", async (req, res) => {
 router.post("/submit-results", async (req, res) => {
   const { id, result, error } = req.body
 
-  // VALIDATION
+  // TODO {id,result, error} validation
   try {
   } catch {}
 
