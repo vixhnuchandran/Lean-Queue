@@ -4,7 +4,7 @@ import requests
 from random import randint
 
 root = "http://127.0.0.1:8383"
-quick_execute = False  # Fixed variable name 'quick_execute' and set it to False
+quick_execute = False 
 
 def execute_task(num1, num2, operation_type):
     if operation_type == "addition":
@@ -15,8 +15,7 @@ def execute_task(num1, num2, operation_type):
 def get_next_task(queue=None, operation_type=None):
     try:
         request_body = {"queue": queue} if queue else {"type": operation_type}
-
-        response = requests.post(root + "/get-available-tasks", json=request_body)
+        response = requests.post(root + "/get-next-available-task", json=request_body)
 
         data = response.json()
         return data
@@ -43,7 +42,6 @@ def run_worker():
                 input("Press Enter to start processing...")
 
             response = get_next_task(operation_type=operation_type)
-
             if response is None:
                 print("\nNo tasks found, worker going to sleep mode")
                 time.sleep(20)
