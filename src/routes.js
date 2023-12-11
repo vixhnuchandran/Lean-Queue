@@ -160,8 +160,8 @@ router.get("/get-results/:queue", async (req, res) => {
       throw new QueueError("Missing queue or Invalid queue")
     }
 
-    const isPresent = await Services.isQueuePresent(parseInt(queue))
-    if (queue && !(await Services.isQueuePresent(parseInt(queue)))) {
+    const isQueue = await Services.isQueuePresent(parseInt(queue))
+    if (queue && !isQueue) {
       throw new ValidationError("Invalid queue")
     }
   } catch (err) {
