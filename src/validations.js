@@ -1,84 +1,56 @@
-// const validateCreateQueuesInput = queue => {
-//   const { type, tasks } = queue
-//   try {
-//     if (typeof queue !== "object") {
-//       throw new Error("Invalid tasks: Tasks must be an object")
-//     }
-//     const { type, tasks } = queue
-
-//     if (typeof type !== "string") {
-//       throw new Error("Invalid tyoe: Type must be a non-empty string")
-//     }
-//     if (typeof tasks !== "object" || Object.keys(tasks).length === 0) {
-//       throw new Error("Invalid tasks: Tasks must be a non-empty object")
-//     }
-
-//     Object.entries(tasks).forEach(([taskId, taskParams]) => {
-//       if (typeof taskParams !== "object") {
-//         throw new Error(`Invalid parameters for task ${taskId}`)
-//       }
-//     })
-
-//     return true
-//   } catch (error) {
-//     console.log(`Validation Error: ${error.message}`)
-//     return false
-//   }
-// }
-
-// const validateAddTasksInput = alltasks => {
-//   const { queue, tasks } = tasks
-//   try {
-//     if (typeof tasks !== "object") {
-//       throw new Error("Invalid input: Input must be an object")
-//     }
-
-//     const { queue, tasks } = tasks
-
-//     if (typeof queue !== "number" || queue < 1) {
-//       throw new Error("Invalid queue: Queue must be a positive number")
-//     }
-
-//     if (typeof tasks !== "object" || Object.keys(tasks).length === 0) {
-//       throw new Error("Invalid tasks: Tasks must be a non-empty object")
-//     }
-
-//     Object.entries(tasks).forEach(([taskId, taskParams]) => {
-//       if (typeof taskParams !== "object") {
-//         throw new Error(`Invalid parameters for task ${taskId}`)
-//       }
-//     })
-
-//     return true
-//   } catch (error) {
-//     console.error(`Validation Error: ${error.message}`)
-//     return false
-//   }
-// }
-
-const isQueueTypeValid = queueType => {
-  try {
-    if (typeof queueType !== "string") {
-      throw new Error("Invalid type: Type must be a non-empty string")
-    }
+const isQueueIdValid = queueId => {
+  if (typeof queueId === "number" && queueId > 0) {
     return true
-  } catch (error) {
-    console.error(`Validation Error: ${error.message}`)
+  } else {
     return false
   }
 }
 
-const iseAllTasksValid = tasks => {
-  const failedTasks = []
-  Object.entries(tasks).forEach(([taskId, taskParams]) => {
-    if (typeof taskParams !== "object") {
-      failedTasks.push(taskId)
-    }
-  })
-  return failedTasks
+const isQueueTypeValid = type => {
+  if (typeof type === "string") {
+    return true
+  } else {
+    return false
+  }
 }
 
+const areOptionsValid = options => {
+  if (typeof options === "object" && typeof options.callback === "string") {
+    const urlRegex = /^(http|https):\/\/[^ "]+$/
+    const isCallbackUrlValid = urlRegex.test(options.callback)
+
+    const expiryTime = options.expiryTime
+    const isExpiryTimeValid = Number.isInteger(expiryTime) && expiryTime > 0
+
+    return isCallbackUrlValid && isExpiryTimeValid
+  }
+  return false
+}
+
+const areQueueParametersValid = (type, tasks, options) => {
+  if (!isQueueTypeValid(type)) {
+    return false
+  } else if (!areAllTasksValid(tasks)) {
+    return false
+  } else if (options !== null) {
+    if (!areOptionsValid(options)) {
+      return false
+    }
+  }
+  return true
+}
+
+const areAllTasksValid = tasks => {
+  return Object.entries(tasks).every(([taskId, taskParams]) => {
+    return typeof taskParams === "object" && Object.keys(taskParams).length > 0
+  })
+}
+
+
 module.exports = {
+  areQueueParametersValid,
+  isQueueIdValid,
   isQueueTypeValid,
-  iseAllTasksValid,
+  areOptionsValid,
+  areAllTasksValid,
 }
