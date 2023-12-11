@@ -29,9 +29,9 @@ const cyan = text => colorize(text, "cyan")
  * @param {string} consoleMessage - The console message to be logged.
  * @param {...any} args - For future usage.
  */
-const customLogger = (consoleMethod, consoleMessage, ...args) => {
-  console[consoleMethod](consoleMessage)
-}
+// const customLogger = (consoleMethod, consoleMessage, ...args) => {
+//   console[consoleMethod](consoleMessage)
+// }
 
 
 const logError = (errorMessage, ...args) => {
