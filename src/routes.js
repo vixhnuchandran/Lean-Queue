@@ -28,7 +28,7 @@ require("dotenv").config()
 const INTERNAL_SERVER_ERROR = "Internal server error"
 
 /**
- * Route  for handling POST request to create queue ✅
+ * Route  for handling POST request to create queue
  */
 router.post("/create-queue", async (req, res) => {
   const { type, tasks, options = null } = req.body
@@ -77,7 +77,7 @@ router.post("/create-queue", async (req, res) => {
 })
 
 /**
- * Route  for handling POST request to add task ✅
+ * Route  for handling POST request to add task
  */
 router.post("/add-tasks", async (req, res) => {
   const { queue, tasks, options } = req.body
@@ -229,9 +229,6 @@ router.get("/get-results/:queue", async (req, res) => {
 router.post("/submit-results", async (req, res) => {
   const { id, result, error } = req.body
   client = req.dbClient
-  // TODO {id,result, error} validation
-  try {
-  } catch {}
   try {
     await submitResults({ id, result, error })
     res.send({ ok: true })
