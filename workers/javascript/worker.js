@@ -12,6 +12,8 @@ require("dotenv").config()
 
 const root = "http://127.0.0.1:8383"
 
+const halt_n_execute = true // make it false or lighting fast execution ;)
+
 const executeTask = (num1, num2, type) => {
   switch (type) {
     case "addition":
@@ -24,11 +26,10 @@ const executeTask = (num1, num2, type) => {
 
 const getNextTask = async ({ queue, type }) => {
   try {
-    // await delay(getRandom(2, 3, "worker") * 1000)
-
+    if (halt_n_execute) {
+      await delay(getRandom(2, 3, "worker") * 1000)
+    }
     const requestBody = queue ? { queue } : { type }
-
-    console.log(requestBody)
     const response = await fetch(root + `/get-next-available-task`, {
       method: "POST",
       headers: {
@@ -68,15 +69,18 @@ const runWorker = async () => {
 
     try {
       console.log(magenta(`\n Fetching tasks...`))
-      // await delay(getRandom(2, 3, "worker") * 1000)
-
+      if (halt_n_execute) {
+        await delay(getRandom(2, 3, "worker") * 1000)
+      }
       const response = await getNextTask({ type })
-      if (response === null) {
+      if (response.message) {
         console.log(yellow(` No tasks found, worker going sleep mode`))
-        await delay(10000)
+        await delay(1 * 60 * 1000) // 1 min
         continue
       }
-      // await delay(getRandom(4, 5, "worker") * 1000)
+      if (halt_n_execute) {
+        await delay(getRandom(2, 3, "worker") * 1000)
+      }
 
       console.log(cyan(` ↳ Task found`))
       console.log(cyan(` ↳ Task details: ${JSON.stringify(response)}`))

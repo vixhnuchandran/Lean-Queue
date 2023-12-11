@@ -4,7 +4,8 @@ import requests
 from random import randint
 
 root = "http://127.0.0.1:8383"
-quick_execute = False 
+
+halt_n_execute = True # make it False or lighting fast execution ;)
 
 def execute_task(num1, num2, operation_type):
     if operation_type == "addition":
@@ -38,7 +39,7 @@ def run_worker():
 
         try:
             print(f"\nFetching tasks...")
-            if quick_execute:
+            if halt_n_execute:
                 input("Press Enter to start processing...")
 
             response = get_next_task(operation_type=operation_type)
@@ -51,13 +52,13 @@ def run_worker():
 
             task_id, params = response["id"], response["params"]
             num1, num2 = params["num1"], params["num2"]
-            if quick_execute:
+            if halt_n_execute:
                 input("Press Enter to execute...")
             result = execute_task(num1, num2, operation_type)
 
             print("Task completed successfully")
 
-            if quick_execute:
+            if halt_n_execute:
                 input("Press Enter to submit...")
 
             if result:
