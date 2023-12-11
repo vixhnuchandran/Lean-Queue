@@ -1,6 +1,14 @@
 const { performance } = require("perf_hooks")
 const format = require("pg-format")
-const { red } = require("./utils")
+const {
+  customLogger,
+  red,
+  green,
+  yellow,
+  blue,
+  magenta,
+  cyan,
+} = require("./utils")
 const pool = require("./db")
 class Services {
   constructor() {
@@ -12,7 +20,11 @@ class Services {
     try {
       this.client = this.pool
 
-      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
       await this.client.query("BEGIN")
 
       const queue = await this.createQueue(type, options)
@@ -22,7 +34,7 @@ class Services {
       return { queue, numTasks }
     } catch (err) {
       await this.client.query("ROLLBACK")
-      console.log(err)
+      customLogger("error", red, err.message)
     }
   }
 
@@ -31,7 +43,11 @@ class Services {
     this.client = this.pool
 
     try {
-      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
 
       const result = await this.client.query(
         `INSERT INTO queues (type, options) 
@@ -42,7 +58,7 @@ class Services {
       const queue = result.rows[0].id
       return queue
     } catch (err) {
-      console.log(err.message)
+      customLogger("error", red, err.message)
     }
   }
 
@@ -51,7 +67,11 @@ class Services {
     try {
       this.client = this.pool
 
-      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
 
       const expiryTime = new Date()
       expiryTime.setTime(expiryTime.getTime() + options.expiryTime)
@@ -72,13 +92,17 @@ class Services {
       }
       return totalEntries.length
     } catch (err) {
-      console.log(err)
+      customLogger("error", red, err.message)
     }
   }
 
   // ✅
   async addTasksByBatch(batch) {
-    console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+    customLogger(
+      "info",
+      cyan,
+      `Total connections in the pool: ${this.pool.totalCount}`
+    )
 
     this.client = this.pool
 
@@ -90,8 +114,7 @@ class Services {
         )
       )
     } catch (err) {
-      console.error(`Error in addTasksByBatch: ${err}`)
-      throw new Error("Failed to add task to the queue.")
+      customLogger("error", red, `Error in addTasksByBatch: ${err.message}`)
     }
   }
 
@@ -111,7 +134,7 @@ class Services {
       )
       data = result.rows[0]
       if (!data) {
-        console.error("No tasks availabe right now!")
+        customLogger("info", yellow, "No tasks availabe right now!")
       } else if (data) {
         const startTime = new Date()
 
@@ -120,11 +143,14 @@ class Services {
         )
       }
       await this.client.query("COMMIT")
-    } catch (error) {
+    } catch (err) {
       await this.client.query("ROLLBACK")
 
-      console.error(`Error in getNextTaskByQueue: ${error.message}`)
-      throw new Error("Failed to get the next task by queue.")
+      customLogger(
+        "error",
+        red,
+        `Error in getNextAvailableTaskByQueue: ${err.message}`
+      )
     }
 
     return data
@@ -134,7 +160,11 @@ class Services {
     let data
 
     try {
-      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
       this.client = this.pool
 
       await this.client.query("BEGIN")
@@ -154,7 +184,7 @@ class Services {
       data = result.rows[0]
 
       if (!data) {
-        console.error("No tasks availabe right now!")
+        customLogger("info", yellow, "No tasks availabe right now!")
       } else if (data) {
         const startTime = new Date()
 
@@ -167,8 +197,7 @@ class Services {
       }
     } catch (error) {
       await this.client.query("ROLLBACK")
-      console.error(`Error in getNextTaskByType: ${error.message}`)
-      throw new Error(`Error in getNextTaskByType: ${error.message}`)
+      customLogger("error", red, `Error in getResults: ${err.message}`)
     }
     return data
   }
@@ -177,7 +206,11 @@ class Services {
     this.client = this.pool
 
     try {
-      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
 
       const endTime = new Date()
 
@@ -205,26 +238,31 @@ class Services {
 
       const queue = response.rows[0].queue_id
       const callbackUrl = response.rows[0].callback_url
-      console.log("queue", queue, "url", callbackUrl)
       if (await this.allTasksCompleted(queue)) {
         if (callbackUrl) {
           const results = await this.getResults(queue)
-          console.log(results)
 
           await this.postResults(callbackUrl, results)
         }
       }
       return
-    } catch (error) {
-      console.error(red(`Error in submitResults: ${error.message}`))
-      throw new Error(`Error in submitResults: ${error.message}`)
+    } catch (err) {
+      customLogger(
+        "error",
+        red,
+        `Error in getNextAvailableTaskByType: ${err.message}`
+      )
     }
   }
 
   async getResults(queue) {
     try {
       this.client = this.pool
-      console.log(`Total connections in the pool: ${this.pool.totalCount}`)
+      customLogger(
+        "info",
+        cyan,
+        `Total connections in the pool: ${this.pool.totalCount}`
+      )
 
       const response = await this.client.query(
         `
@@ -239,8 +277,8 @@ class Services {
       })
 
       return { results }
-    } catch (error) {
-      console.error(error)
+    } catch (err) {
+      customLogger("error", red, `Error in getResults: ${err.message}`)
     }
   }
 
@@ -255,7 +293,7 @@ class Services {
         timeout: 20000,
       })
     } catch (error) {
-      console.error(error)
+      customLogger("error", red, `Error in postResults: ${err.message}`)
     }
   }
 
@@ -288,10 +326,7 @@ class Services {
     if (totalTasks.rows[0].count === completedTasks.rows[0].count) {
       areCompleted = true
     }
-    console.log(
-      `total: ${totalTasks.rows[0].count} , completed: ${completedTasks.rows[0].count}`
-    )
-    console.log("areCompleted:", areCompleted)
+
     return areCompleted
   }
 }
