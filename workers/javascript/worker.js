@@ -24,11 +24,12 @@ const executeTask = (num1, num2, type) => {
 
 const getNextTask = async ({ queue, type }) => {
   try {
-    await delay(getRandom(5, 7, "worker") * 1000)
+    // await delay(getRandom(2, 3, "worker") * 1000)
 
     const requestBody = queue ? { queue } : { type }
 
-    const response = await fetch(root + `/get-available-tasks`, {
+    console.log(requestBody)
+    const response = await fetch(root + `/get-next-available-task`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -36,14 +37,11 @@ const getNextTask = async ({ queue, type }) => {
       body: JSON.stringify(requestBody),
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`)
-    }
-
     const data = await response.json()
 
     return data
   } catch (error) {
+    console.log(error)
     return null
   }
 }
@@ -57,6 +55,7 @@ const sendResults = async (id, result, endTime, error) => {
       },
       body: JSON.stringify({ id, endTime, result, error }),
     })
+
     return response
   } catch (error) {
     console.error("Error while sending result:", error.message)
@@ -69,16 +68,15 @@ const runWorker = async () => {
 
     try {
       console.log(magenta(`\n Fetching tasks...`))
-      await delay(getRandom(5, 7, "worker") * 1000)
+      // await delay(getRandom(2, 3, "worker") * 1000)
 
       const response = await getNextTask({ type })
-
       if (response === null) {
         console.log(yellow(` No tasks found, worker going sleep mode`))
         await delay(10000)
         continue
       }
-      await delay(getRandom(4, 5, "worker") * 1000)
+      // await delay(getRandom(4, 5, "worker") * 1000)
 
       console.log(cyan(` ↳ Task found`))
       console.log(cyan(` ↳ Task details: ${JSON.stringify(response)}`))
