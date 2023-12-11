@@ -1,34 +1,22 @@
+const fs = require("fs")
+const path = require("path")
 const pool = require("./db")
 
 createTables = async () => {
+  let client = null
   try {
-    await pool.query(`
-    CREATE TABLE IF NOT EXISTS queues (
-      id SERIAL PRIMARY KEY,
-      type VARCHAR(20) NOT NULL ,
-      options JSONB NOT NULL
-    )
-  `)
+    client = pool.connect()
 
-    await pool.query(`
-  CREATE TYPE task_status AS ENUM ('available', 'processing', 'completed', 'error');
-  
-  CREATE TABLE IF NOT EXISTS tasks (
-    id SERIAL PRIMARY KEY,
-    task_id VARCHAR(255) NOT NULL,
-    params JSONB NOT NULL,
-    status task_status DEFAULT 'available',
-    result JSONB DEFAULT NULL,
-    start_time TIMESTAMP DEFAULT NULL,
-    end_time TIMESTAMP DEFAULT NULL,
-    expiry_time TIMESTAMP DEFAULT NULL,
-    queue_id INTEGER REFERENCES queues(id)
-  )
-`)
+    const sqlFilePath = path.join(__dirname, "query.sql")
+    const sqlQueries = fs.readFileSync(sqlFilePath, "utf-8")
+
+    await client.query(sqlQueries)
 
     console.log("Tables created successfully")
   } catch (error) {
     console.error("Error creating tables", error)
+  } finally {
+    if (client) client.release()
   }
 }
 
