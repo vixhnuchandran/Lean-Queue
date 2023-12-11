@@ -1,7 +1,8 @@
 const express = require("express")
-const pool = require("./db")
 const routes = require("./routes")
 require("dotenv").config()
+
+const INTERNAL_SERVER_ERROR = "Internal server error"
 
 const app = express()
 
@@ -9,8 +10,6 @@ const app = express()
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 
-// database connection
-pool.connect()
 // routes
 app.get("/", (req, res) => {
   res.send({ message: ` Task handler application` })
@@ -21,7 +20,7 @@ app.use("/", routes)
 // error handler
 app.use((err, req, res, next) => {
   console.error(err.stack)
-  res.sendStatus(500).send({ message: `Something went wrong!` })
+  res.sendStatus(500).send({ error: INTERNAL_SERVER_ERROR })
 })
 
 const PORT = process.env.PORT || 8383
