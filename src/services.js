@@ -18,14 +18,18 @@ const createQueueAndAddTasks = async (type, options, tasks) => {
   }
 }
 
-const createQueue = async (type, options) => {
+const createQueue = async (type, options = null) => {
   try {
-    const queryStr = `INSERT INTO queues (type, options) VALUES ($1,$2) RETURNING id;`
-    const result = await client.query(queryStr, [type, options])
+    const queryStr = `
+    INSERT INTO queues (type, options) 
+    VALUES ('${type}', '${JSON.stringify(options)}') 
+    RETURNING id;
+    `
+    const result = await client.query(queryStr)
     const queue = result.rows[0].id
     return queue
   } catch (err) {
-    customLogger("error", red, `Error in createQueue: ${err.message}`)
+    customLogger("error", red, `Error in createQueue: ${err.stack}`)
   }
 }
 
@@ -33,8 +37,7 @@ const addTasks = async (queue, tasks, options) => {
   try {
     const expiryTime = new Date()
     expiryTime.setTime(
-      expiryTime.getTime() +
-        (options.expiryTime ? options.expiryTime : 2 * 60 * 1000) // 2 minutes
+      expiryTime.getTime() + (options?.expiryTime ?? 2 * 60 * 1000) // 2 minutes
     )
     const batchSize = 5 //75
     const totalEntries = Object.entries(tasks)
@@ -57,7 +60,10 @@ const addTasks = async (queue, tasks, options) => {
 
 const addTasksByBatch = async batch => {
   try {
-    const queryStr = `INSERT INTO tasks (task_id, params, expiry_time, queue_id) VALUES %L`
+    const queryStr = `
+    INSERT INTO tasks (task_id, params, expiry_time, queue_id) 
+    VALUES %L
+    `
     await client.query(format(queryStr, batch))
   } catch (err) {
     customLogger("error", red, `Error in addTasksByBatch: ${err.message}`)
@@ -68,11 +74,15 @@ const getNextAvailableTaskByQueue = async queue => {
   let data = null
   try {
     await client.query("BEGIN")
-    const queryStr = `SELECT * FROM tasks 
-    WHERE queue_id = ${queue.id}  AND 
-      (status = "available" OR (status = "processing" AND expiry_time < NOW())) 
+    const queryStr = `
+    SELECT * FROM tasks 
+    WHERE queue_id = ${queue.id}  
+      AND (status = "available" 
+      OR (status = "processing" 
+      AND expiry_time < NOW())) 
     LIMIT 1 
-    FOR UPDATE SKIP LOCKED;`
+    FOR UPDATE SKIP LOCKED;
+    `
     const result = await client.query(queryStr)
     data = result.rows[0]
     if (!data) {
@@ -81,7 +91,10 @@ const getNextAvailableTaskByQueue = async queue => {
       const startTime = new Date()
 
       await client.query(
-        `UPDATE tasks SET status = "processing", start_time = ${startTime} WHERE id = ${data.id}`
+        `
+        UPDATE tasks SET status = "processing", start_time = ${startTime} 
+        WHERE id = ${data.id}
+        `
       )
     }
     await client.query("COMMIT")
@@ -94,30 +107,34 @@ const getNextAvailableTaskByQueue = async queue => {
 
 const getNextAvailableTaskByType = async type => {
   let data = null
+
   try {
     await client.query("BEGIN")
+
     const result = await client.query(
       `
         SELECT tasks.*
         FROM tasks
         JOIN queues ON tasks.queue_id = queues.id
-        WHERE queues.type = $1
+        WHERE queues.type = '${type}'
           AND (tasks.status = 'available' OR (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
         LIMIT 1
         FOR UPDATE SKIP LOCKED;
-      `,
-      [type]
+      `
     )
 
     data = result.rows[0]
 
     if (!data) {
-      customLogger("warn", yellow, "No tasks availabe right now!")
-    } else if (data) {
+      customLogger("warn", yellow, "No tasks available right now!")
+    } else {
       const startTime = new Date()
 
       await client.query(
-        `UPDATE tasks SET status = 'processing', start_time = $1 WHERE id = $2;`,
+        `
+        UPDATE tasks SET status = 'processing', start_time = $1
+        WHERE id = $2;
+        `,
         [startTime, data.id]
       )
 
@@ -127,6 +144,7 @@ const getNextAvailableTaskByType = async type => {
     await client.query("ROLLBACK")
     customLogger("error", red, `Error in getNextTaskByType: ${err.message}`)
   }
+
   return data
 }
 
@@ -136,7 +154,6 @@ const submitResults = async ({
   error = { error: "unsupported operation" },
 }) => {
   try {
-    const endTime = new Date()
     const resultObj = error ? { error } : { sum: result }
     const queryStr = `
     UPDATE tasks 
@@ -145,31 +162,28 @@ const submitResults = async ({
         WHEN $1::jsonb IS NOT NULL THEN 'error'::task_status
         ELSE 'completed'::task_status
       END,
-      end_time = $2,
+      end_time = NOW(),
       result = CASE
         WHEN $1::jsonb IS NOT NULL THEN $1::jsonb
-        ELSE $3::jsonb
+        ELSE $2::jsonb
       END
     FROM queues
-    WHERE tasks.id = $4 AND queues.id = tasks.queue_id
+    WHERE tasks.id = $3 AND queues.id = tasks.queue_id
     RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
   `
-    const response = await client.query(queryStr, [
-      error,
-      endTime,
-      resultObj,
-      id,
-    ])
+    // const response = await client.query(queryStr)
+    const response = await client.query(queryStr, [error, resultObj, id])
+
     const queue = response.rows[0].queue_id
     const callbackUrl = response.rows[0].callback_url
-    if (allTasksCompleted(queue)) {
+    if (await allTasksCompleted(queue)) {
       customLogger("log", green, "All Tasks Finished")
       if (callbackUrl) {
-        postResults(callbackUrl, getResults(queue))
+        await postResults(callbackUrl, await getResults(queue))
       }
     }
   } catch (error) {
-    console.error(red(`Error in submitResults: ${error.message}`))
+    console.error(red(`Error in submitResults: ${error.stack}`))
     throw new Error(`Error in submitResults: ${error.message}`)
   }
 }
@@ -180,7 +194,8 @@ const getResults = async queue => {
       `
       SELECT task_id, result
       FROM tasks
-      WHERE status IN ('completed', 'error') AND queue_id = ${queue};
+      WHERE status IN ('completed', 'error') 
+        AND queue_id = ${queue};
        `
     )
     const results = {}
@@ -210,14 +225,21 @@ const postResults = async (url, results) => {
 
 const totalTaskCountInQueue = async queue => {
   const response = await client.query(
-    `SELECT COUNT(*) FROM tasks WHERE queue_id = ${queue}`
+    `
+    SELECT COUNT(*) FROM tasks 
+    WHERE queue_id = ${queue}
+    `
   )
   return response
 }
 
 const completedTaskCountInQueue = async queue => {
   const response = await client.query(
-    `SELECT COUNT(*) FROM tasks WHERE queue_id = ${queue} AND status IN ('completed', 'error')`
+    `
+    SELECT COUNT(*) FROM tasks 
+    WHERE queue_id = ${queue} 
+      AND status IN ('completed', 'error')
+    `
   )
   return response
 }
