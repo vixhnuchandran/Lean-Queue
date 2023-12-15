@@ -43,7 +43,7 @@ def run_worker():
                 input("Press Enter to start processing...")
 
             response = get_next_task(operation_type=operation_type)
-            if response is None:
+            if isinstance(response, dict) and "message" in response :
                 print("\nNo tasks found, worker going to sleep mode")
                 time.sleep(20)
                 continue
