@@ -77,11 +77,11 @@ const runWorker = async () => {
         console.log(yellow(` No tasks found, worker going sleep mode`))
         await delay(1 * 60 * 1000) // 1 min
         continue
+      } else if (response.data) {
+        if (halt_n_execute) {
+          await delay(getRandom(2, 3, "worker") * 1000)
+        }
       }
-      if (halt_n_execute) {
-        await delay(getRandom(2, 3, "worker") * 1000)
-      }
-
       console.log(cyan(` ↳ Task found`))
       console.log(cyan(` ↳ Task details: ${JSON.stringify(response)}`))
       const { id, params } = response
