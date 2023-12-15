@@ -159,21 +159,24 @@ const submitResults = async ({
     UPDATE tasks 
     SET 
       status = CASE
-        WHEN ${error}::jsonb IS NOT NULL THEN 'error'::task_status
+        WHEN '${JSON.stringify(
+          error
+        )}'::jsonb IS NOT NULL THEN 'error'::task_status
         ELSE 'completed'::task_status
       END,
       end_time = NOW(),
       result = CASE
-        WHEN ${error}::jsonb IS NOT NULL THEN ${error}::jsonb
-        ELSE $1::jsonb
+        WHEN '${JSON.stringify(
+          error
+        )}'::jsonb IS NOT NULL THEN '${JSON.stringify(error)}'::jsonb
+        ELSE '${JSON.stringify(resultObj)}'::jsonb
       END
     FROM queues
     WHERE tasks.id = ${id} AND queues.id = tasks.queue_id
     RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
   `
-    // const response = await client.query(queryStr)
     // TODO why direct string not working
-    const response = await client.query(queryStr, [resultObj])
+    const response = await client.query(queryStr)
 
     const queue = response.rows[0].queue_id
     const callbackUrl = response.rows[0].callback_url
