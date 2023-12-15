@@ -49,10 +49,10 @@ router.post("/create-queue", async (req, res) => {
     }
   } catch (err) {
     if (err instanceof ValidationError) {
-      customLogger("error", red, "ValidationError: Invalid queue parameters")
+      customLogger("error", red, `Validation Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else if (err instanceof QueueError) {
-      customLogger("error", red, "QueueError")
+      customLogger("error", red, `Queue Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else {
       customLogger("error", red, "Unknown Error: ", err.message)
@@ -65,6 +65,11 @@ router.post("/create-queue", async (req, res) => {
       options,
       tasks
     )
+
+    if (!queue) {
+      throw new Error()
+    }
+
     return res.json({ queue, numTasks })
   } catch (err) {
     customLogger("error", red, "Unknown Error: ", err.message)
@@ -101,10 +106,10 @@ router.post("/add-tasks", async (req, res) => {
     }
   } catch (err) {
     if (err instanceof ValidationError) {
-      customLogger("error", red, "ValidationError: Invalid queue parameters")
+      customLogger("error", red, `Validation Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else if (err instanceof QueueError) {
-      customLogger("error", red, "QueueError: Missing queue")
+      customLogger("error", red, `Queue Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else {
       customLogger("error", red, "Unknown Error:", err)
@@ -141,10 +146,10 @@ router.post("/get-next-available-task", async (req, res) => {
     }
   } catch {
     if (err instanceof ValidationError) {
-      customLogger("error", red, "ValidationError: Invalid queue parameters")
+      customLogger("error", red, `Validation Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else if (err instanceof QueueError) {
-      customLogger("error", red, "QueueError")
+      customLogger("error", red, `Queue Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else {
       customLogger("error", red, "Unknown Error:", err)
@@ -195,10 +200,10 @@ router.get("/get-results/:queue", async (req, res) => {
     }
   } catch (err) {
     if (err instanceof ValidationError) {
-      customLogger("error", red, "ValidationError: Invalid queue")
+      customLogger("error", red, `Validation Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else if (err instanceof QueueError) {
-      customLogger("error", red, "QueueError: Missing queue")
+      customLogger("error", red, `Queue Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
     } else {
       customLogger("error", red, "Unknown Error:", err.message)
@@ -228,6 +233,7 @@ router.get("/get-results/:queue", async (req, res) => {
  */
 router.post("/submit-results", async (req, res) => {
   const { id, result, error } = req.body
+
   client = req.dbClient
   try {
     await submitResults({ id, result, error })
