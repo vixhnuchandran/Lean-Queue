@@ -144,7 +144,7 @@ router.post("/get-next-available-task", async (req, res) => {
     } else if (type && !isQueueTypeValid) {
       throw new ValidationError("Invalid queueType")
     }
-  } catch {
+  } catch (err){
     if (err instanceof ValidationError) {
       customLogger("error", red, `Validation Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
@@ -164,7 +164,7 @@ router.post("/get-next-available-task", async (req, res) => {
       nextAvailableTask = await getNextAvailableTaskByType(type)
     }
     if (!nextAvailableTask) {
-      return res.status(200).json({
+      return res.status(400).json({
         message: "No available task found",
       })
     }

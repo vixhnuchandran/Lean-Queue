@@ -159,20 +159,21 @@ const submitResults = async ({
     UPDATE tasks 
     SET 
       status = CASE
-        WHEN $1::jsonb IS NOT NULL THEN 'error'::task_status
+        WHEN ${error}::jsonb IS NOT NULL THEN 'error'::task_status
         ELSE 'completed'::task_status
       END,
       end_time = NOW(),
       result = CASE
-        WHEN $1::jsonb IS NOT NULL THEN $1::jsonb
-        ELSE $2::jsonb
+        WHEN ${error}::jsonb IS NOT NULL THEN ${error}::jsonb
+        ELSE $1::jsonb
       END
     FROM queues
-    WHERE tasks.id = $3 AND queues.id = tasks.queue_id
+    WHERE tasks.id = ${id} AND queues.id = tasks.queue_id
     RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
   `
     // const response = await client.query(queryStr)
-    const response = await client.query(queryStr, [error, resultObj, id])
+    // TODO why direct string not working
+    const response = await client.query(queryStr, [resultObj])
 
     const queue = response.rows[0].queue_id
     const callbackUrl = response.rows[0].callback_url
@@ -182,9 +183,9 @@ const submitResults = async ({
         await postResults(callbackUrl, await getResults(queue))
       }
     }
-  } catch (error) {
-    console.error(red(`Error in submitResults: ${error.stack}`))
-    throw new Error(`Error in submitResults: ${error.message}`)
+  } catch (err) {
+    console.error(red(`Error in submitResults: ${err.stack}`))
+    throw new Error(`Error in submitResults: ${err.message}`)
   }
 }
 
@@ -204,8 +205,9 @@ const getResults = async queue => {
     })
 
     return { results }
-  } catch (error) {
-    console.error(error)
+  } catch (err) {
+    console.error(red(`Error in getResults: ${err.stack}`))
+    throw new Error(`Error in getResults: ${err.message}`)
   }
 }
 
@@ -218,8 +220,9 @@ const postResults = async (url, results) => {
       },
       body: JSON.stringify(results),
     })
-  } catch (error) {
-    console.error(error)
+  } catch (err) {
+    console.error(red(`Error in postResults: ${err.stack}`))
+    throw new Error(`Error in postResults: ${err.message}`)
   }
 }
 
