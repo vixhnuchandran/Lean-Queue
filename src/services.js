@@ -1,12 +1,22 @@
+const { performance } = require("perf_hooks")
 const format = require("pg-format")
-const { red, customLogger, green, yellow } = require("./utils")
+const { red, cyan, customLogger, green, yellow } = require("./utils")
 
 const createQueueAndAddTasks = async (type, options, tasks) => {
+  let queue, numTasks
   try {
-    await client.query("BEGIN")
-    const queue = await createQueue(type, options)
-    const numTasks = await addTasks(queue, tasks, options)
-    await client.query("COMMIT")
+    queue = await createQueue(type, options)
+    if (queue) {
+      await client.query("BEGIN")
+      numTasks = await addTasks(queue, tasks, options)
+      await client.query("COMMIT")
+    } else {
+      customLogger(
+        "error",
+        red,
+        "createQueue operation did not return a valid queue."
+      )
+    }
     return { queue, numTasks }
   } catch (err) {
     await client.query("ROLLBACK")
@@ -17,8 +27,8 @@ const createQueueAndAddTasks = async (type, options, tasks) => {
     )
   }
 }
-
 const createQueue = async (type, options = null) => {
+  let queue = null
   try {
     const queryStr = `
     INSERT INTO queues (type, options) 
@@ -26,7 +36,7 @@ const createQueue = async (type, options = null) => {
     RETURNING id;
     `
     const result = await client.query(queryStr)
-    const queue = result.rows[0].id
+    queue = result.rows[0].id
     return queue
   } catch (err) {
     customLogger("error", red, `Error in createQueue: ${err.stack}`)
@@ -39,9 +49,14 @@ const addTasks = async (queue, tasks, options) => {
     expiryTime.setTime(
       expiryTime.getTime() + (options?.expiryTime ?? 2 * 60 * 1000) // 2 minutes
     )
-    const batchSize = 5 //75
+
+    const batchSize = 1000
     const totalEntries = Object.entries(tasks)
     const totalBatches = Math.ceil(totalEntries.length / batchSize)
+
+    let totalTimeM, endTimeM, startTimeM
+    console.log(`Total Batches: ${totalBatches}`)
+    startTimeM = performance.now()
     for (let i = 0; i < totalBatches; i++) {
       const batchStart = i * batchSize
       const batchEnd = (i + 1) * batchSize
@@ -50,8 +65,23 @@ const addTasks = async (queue, tasks, options) => {
         .map(([taskId, params]) => {
           return [taskId, params, expiryTime, queue]
         })
-      await addTasksByBatch(batch, options)
+
+      await addTasksByBatch(batch)
+
+      //perf
+      endTimeM = performance.now()
+      totalTimeM = (endTimeM - startTimeM) / 1000
     }
+    customLogger(
+      "info",
+      green,
+      `Total-time-taken: ${totalTimeM.toFixed(3)} seconds`
+    )
+    customLogger(
+      "info",
+      yellow,
+      `Total tasks: ${totalEntries.length}, Total batches: ${totalBatches}, Batch size: ${batchSize}`
+    )
     return totalEntries.length
   } catch (err) {
     customLogger("error", red, `Error in addTasks: ${err.message}`)
@@ -66,7 +96,7 @@ const addTasksByBatch = async batch => {
     `
     await client.query(format(queryStr, batch))
   } catch (err) {
-    customLogger("error", red, `Error in addTasksByBatch: ${err.message}`)
+    customLogger("error", red, `Error in addTasksByBatch: ${err.stack}`)
   }
 }
 
@@ -86,7 +116,7 @@ const getNextAvailableTaskByQueue = async queue => {
     const result = await client.query(queryStr)
     data = result.rows[0]
     if (!data) {
-      console.error("No tasks availabe right now!")
+      customLogger("warn", yellow, "No tasks available right now!")
     } else if (data) {
       const startTime = new Date()
 
@@ -148,35 +178,28 @@ const getNextAvailableTaskByType = async type => {
   return data
 }
 
-const submitResults = async ({
-  id,
-  result,
-  error = { error: "unsupported operation" },
-}) => {
+const submitResults = async ({ id, result, error }) => {
   try {
-    const resultObj = error ? { error } : { sum: result }
+    const resultObj = error ? { error } : { result }
     const queryStr = `
-    UPDATE tasks 
-    SET 
-      status = CASE
-        WHEN '${JSON.stringify(
-          error
-        )}'::jsonb IS NOT NULL THEN 'error'::task_status
-        ELSE 'completed'::task_status
-      END,
-      end_time = NOW(),
-      result = CASE
-        WHEN '${JSON.stringify(
-          error
-        )}'::jsonb IS NOT NULL THEN '${JSON.stringify(error)}'::jsonb
-        ELSE '${JSON.stringify(resultObj)}'::jsonb
-      END
-    FROM queues
-    WHERE tasks.id = ${id} AND queues.id = tasks.queue_id
-    RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
-  `
-    // TODO why direct string not working
-    const response = await client.query(queryStr)
+      UPDATE tasks 
+      SET 
+        status = CASE
+          WHEN $1::text IS NOT NULL THEN 'error'::task_status
+          ELSE 'completed'::task_status
+        END,
+        end_time = NOW(),
+        result = $2::jsonb
+      FROM queues
+      WHERE tasks.id = $3 AND queues.id = tasks.queue_id
+      RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
+    `
+
+    const response = await client.query(queryStr, [
+      error,
+      JSON.stringify(resultObj),
+      id,
+    ])
 
     const queue = response.rows[0].queue_id
     const callbackUrl = response.rows[0].callback_url
@@ -187,8 +210,11 @@ const submitResults = async ({
       }
     }
   } catch (err) {
-    console.error(red(`Error in submitResults: ${err.stack}`))
-    throw new Error(`Error in submitResults: ${err.message}`)
+    customLogger(
+      "error",
+      red,
+      `Error in const submitResults = async ({ : ${err.stack}`
+    )
   }
 }
 
@@ -209,8 +235,7 @@ const getResults = async queue => {
 
     return { results }
   } catch (err) {
-    console.error(red(`Error in getResults: ${err.stack}`))
-    throw new Error(`Error in getResults: ${err.message}`)
+    customLogger("error", red, `Error in getResults: ${err.stack}`)
   }
 }
 
@@ -224,8 +249,7 @@ const postResults = async (url, results) => {
       body: JSON.stringify(results),
     })
   } catch (err) {
-    console.error(red(`Error in postResults: ${err.stack}`))
-    throw new Error(`Error in postResults: ${err.message}`)
+    customLogger("error", red, `Error in postResults: ${err.stack}`)
   }
 }
 
