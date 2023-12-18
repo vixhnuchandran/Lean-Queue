@@ -15,6 +15,7 @@ const {
   getNextAvailableTaskByType,
   submitResults,
   getResults,
+  getStatus,
 } = require("./services")
 const {
   areQueueParametersValid,
@@ -194,7 +195,7 @@ router.get("/get-results/:queue", async (req, res) => {
       throw new QueueError("Missing queue or Invalid queue")
     }
 
-    const isQueue = await isQueuePresent(parseInt(queue))
+    const isQueue = await isQueueIdValid(parseInt(queue))
     if (queue && !isQueue) {
       throw new ValidationError("Invalid queue")
     }
@@ -220,6 +221,61 @@ router.get("/get-results/:queue", async (req, res) => {
     }
   } catch (err) {
     customLogger("error", red, "Unknown Error:", err)
+    return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
+  } finally {
+    if (req.dbClient) {
+      req.dbClient.release()
+    }
+  }
+})
+
+/**
+ * Route for handling GET request to get the results using queue id
+ */
+router.get("/status/:queue", async (req, res) => {
+  const queue = req.params.queue
+
+  client = req.dbClient
+  // VALIDATION
+  try {
+    if (!queue || isNaN(parseInt(queue))) {
+      throw new QueueError("Missing queue or Invalid queue")
+    }
+
+    const isQueue = await isQueueIdValid(parseInt(queue))
+    if (queue && !isQueue) {
+      throw new ValidationError("Invalid queue")
+    }
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      customLogger("error", red, `Validation Error: ${err.message}`)
+      return res.status(400).json({ error: err.message })
+    } else if (err instanceof QueueError) {
+      customLogger("error", red, `Queue Error: ${err.message}`)
+      return res.status(400).json({ error: err.message })
+    } else {
+      customLogger("error", red, `Unknown Error: ${err.message}`)
+    }
+  }
+  // PROCESSING
+  try {
+    const { total_jobs, completed_count, error_count } = await getStatus(
+      parseInt(queue)
+    )
+
+    customLogger(
+      "log",
+      cyan,
+      `${total_jobs}, ${completed_count}, ${error_count}`
+    )
+
+    return res.status(200).json({
+      totalTasks: total_jobs,
+      completedTasks: completed_count,
+      errorTasks: error_count,
+    })
+  } catch (err) {
+    customLogger("error", red, `Unknown Error: ${err.message}`)
     return res.status(500).json({ error: INTERNAL_SERVER_ERROR })
   } finally {
     if (req.dbClient) {
