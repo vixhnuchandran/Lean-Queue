@@ -19,3 +19,4 @@ CREATE TABLE IF NOT EXISTS tasks (
   queue_id INTEGER REFERENCES queues(id)
 );
 
+
