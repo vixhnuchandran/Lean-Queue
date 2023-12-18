@@ -233,6 +233,25 @@ const submitResults = async ({ id, result, error }) => {
   }
 }
 
+const getStatus = async queue => {
+  try {
+    const response = await client.query(
+      `
+      SELECT 
+          COUNT(task_id) AS total_jobs,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+          SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS error_count
+      FROM tasks
+      WHERE queue_id = ${queue} ;
+       `
+    )
+
+    return response.rows[0]
+  } catch (err) {
+    customLogger("error", red, `Error in getStatus: ${err.stack}`)
+  }
+}
+
 const getResults = async queue => {
   try {
     const response = await client.query(
@@ -307,6 +326,7 @@ module.exports = {
   getNextAvailableTaskByQueue,
   getNextAvailableTaskByType,
   submitResults,
+  getStatus,
   getResults,
   postResults,
   totalTaskCountInQueue,
