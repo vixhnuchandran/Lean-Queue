@@ -4,7 +4,7 @@ require("dotenv").config()
 const connectionString = process.env.POSTGRES_URL
 const pool = new Pool({
   connectionString,
-  max: 5,
+  max: 10,
 })
 
 pool.on("connect", () => {
