@@ -19,6 +19,7 @@ const createQueueAndAddTasks = async (type, options, tasks) => {
     }
     return { queue, numTasks }
   } catch (err) {
+    await deleteQueue(queue)
     await client.query("ROLLBACK")
     customLogger(
       "error",
@@ -27,6 +28,7 @@ const createQueueAndAddTasks = async (type, options, tasks) => {
     )
   }
 }
+
 const createQueue = async (type, options = null) => {
   let queue = null
   try {
@@ -43,6 +45,19 @@ const createQueue = async (type, options = null) => {
   }
 }
 
+const deleteQueue = async queue => {
+  try {
+    const queryStr = `
+    DELETE FROM queues
+    WHERE id = ${queue} ;
+    `
+    const result = await client.query(queryStr)
+    queue = result.rows[0].id
+    return queue
+  } catch (err) {
+    customLogger("error", red, `Error in createQueue: ${err.stack}`)
+  }
+}
 const addTasks = async (queue, tasks, options) => {
   try {
     const expiryTime = new Date()
