@@ -144,7 +144,7 @@ router.post("/get-next-available-task", async (req, res) => {
     } else if (type && !isQueueTypeValid) {
       throw new ValidationError("Invalid queueType")
     }
-  } catch (err){
+  } catch (err) {
     if (err instanceof ValidationError) {
       customLogger("error", red, `Validation Error: ${err.message}`)
       return res.status(400).json({ error: err.message })
@@ -232,7 +232,7 @@ router.get("/get-results/:queue", async (req, res) => {
  * Route  for handling POST request to submit the results
  */
 router.post("/submit-results", async (req, res) => {
-  const { id, result, error } = req.body
+  const { id, result, error = null } = req.body
 
   client = req.dbClient
   try {
