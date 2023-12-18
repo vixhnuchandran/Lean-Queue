@@ -6,6 +6,14 @@ const isQueueIdValid = queueId => {
   }
 }
 
+const isTagValid = tag => {
+  if (typeof tag === "string") {
+    return true
+  } else {
+    return false
+  }
+}
+
 const isQueueTypeValid = type => {
   if (typeof type === "string") {
     return true
@@ -46,9 +54,9 @@ const areAllTasksValid = tasks => {
   })
 }
 
-
 module.exports = {
   areQueueParametersValid,
+  isTagValid,
   isQueueIdValid,
   isQueueTypeValid,
   areOptionsValid,
