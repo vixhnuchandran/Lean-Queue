@@ -1,18 +1,11 @@
 const router = require("express").Router()
-const {
-  customLogger,
-  red,
-  green,
-  yellow,
-  blue,
-  magenta,
-  cyan,
-} = require("./utils")
+const { customLogger, red, cyan } = require("./utils")
 const {
   addTasks,
   createQueueAndAddTasks,
   getNextAvailableTaskByQueue,
   getNextAvailableTaskByType,
+  getNextAvailableTaskByTag,
   submitResults,
   getResults,
   getStatus,
@@ -20,6 +13,7 @@ const {
 const {
   areQueueParametersValid,
   isQueueIdValid,
+  isTagValid,
   isQueueTypeValid,
   areOptionsValid,
   areAllTasksValid,
@@ -32,7 +26,8 @@ const INTERNAL_SERVER_ERROR = "Internal server error"
  * Route  for handling POST request to create queue
  */
 router.post("/create-queue", async (req, res) => {
-  const { type, tasks, options = null } = req.body
+  const { type, tasks, options = null, tags } = req.body
+  console.log(type, tasks, options, tags)
   client = req.dbClient
   // VALIDATION
   try {
@@ -64,12 +59,9 @@ router.post("/create-queue", async (req, res) => {
     const { queue, numTasks } = await createQueueAndAddTasks(
       type,
       options,
-      tasks
+      tasks,
+      tags
     )
-
-    if (!queue) {
-      throw new Error()
-    }
 
     return res.json({ queue, numTasks })
   } catch (err) {
@@ -133,17 +125,20 @@ router.post("/add-tasks", async (req, res) => {
 /**
  * Route  for handling POST requestto get the next task
  */
+// TODO instead of id and queue make  tag
 router.post("/get-next-available-task", async (req, res) => {
-  const { queue, type } = req.body
+  const { queue, type, tag } = req.body
   client = req.dbClient
   // VALIDATION
   try {
-    if (!queue && !type) {
-      throw new QueueError("Either queue or type must be specified")
-    } else if (queue && isQueueIdValid) {
+    if (!queue && !type && !tag) {
+      throw new QueueError("Either queue, type, or tag must be specified")
+    } else if (queue && !isQueueIdValid(queue)) {
       throw new ValidationError("Invalid queueId")
-    } else if (type && !isQueueTypeValid) {
+    } else if (type && !isQueueTypeValid(type)) {
       throw new ValidationError("Invalid queueType")
+    } else if (tag && !isTagValid(tag)) {
+      throw new ValidationError("Invalid tag")
     }
   } catch (err) {
     if (err instanceof ValidationError) {
@@ -163,6 +158,8 @@ router.post("/get-next-available-task", async (req, res) => {
       nextAvailableTask = await getNextAvailableTaskByQueue(queue)
     } else if (type) {
       nextAvailableTask = await getNextAvailableTaskByType(type)
+    } else if (tag) {
+      nextAvailableTask = await getNextAvailableTaskByTag(tag)
     }
     if (!nextAvailableTask) {
       return res.status(400).json({
@@ -262,7 +259,6 @@ router.get("/status/:queue", async (req, res) => {
     const { total_jobs, completed_count, error_count } = await getStatus(
       parseInt(queue)
     )
-
     customLogger(
       "log",
       cyan,
