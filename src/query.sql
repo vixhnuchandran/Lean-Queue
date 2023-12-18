@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id SERIAL PRIMARY KEY,
   task_id VARCHAR(255) NOT NULL,
   params JSONB NOT NULL,
+  tags VARCHAR(255),
   status task_status DEFAULT 'available',
   result JSONB DEFAULT NULL,
   start_time TIMESTAMP DEFAULT NULL,
