@@ -9,7 +9,7 @@ const app = express()
 
 // middleware
 app.use(express.urlencoded({ extended: true }))
-app.use(express.json())
+app.use(express.json({ limit: "100mb" }))
 app.use(async (req, res, next) => {
   const client = await pool.connect()
   req.dbClient = client
