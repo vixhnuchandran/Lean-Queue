@@ -37,7 +37,7 @@ const addTasks = async (queue, tasks, options, tags) => {
       expiryTime.getTime() + (options?.expiryTime ?? 2 * 60 * 1000) // 2 minutes
     )
 
-    const batchSize = 4096
+    const batchSize = 512
     const totalEntries = Object.entries(tasks)
     const totalBatches = Math.ceil(totalEntries.length / batchSize)
 
