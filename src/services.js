@@ -35,6 +35,13 @@ const addTasks = async (queue, tasks, options, tags) => {
       expiryTime.getTime() + (options?.expiryTime ?? 2 * 60 * 1000) // 2 minutes
     )
 
+    Object.keys(tasks).forEach(taskId => {
+      tasks[taskId].priority =
+        tasks[taskId].priority >= 1 && tasks[taskId].priority <= 10
+          ? tasks[taskId].priority
+          : 5
+    })
+
     const batchSize = 4096
     const totalEntries = Object.entries(tasks)
     const totalBatches = Math.ceil(totalEntries.length / batchSize)
@@ -75,7 +82,7 @@ const addTasks = async (queue, tasks, options, tags) => {
 const addTasksByBatch = async batch => {
   try {
     const queryStr = `
-    INSERT INTO tasks (task_id, params,tags, expiry_time, queue_id) 
+    INSERT INTO tasks (task_id, params, tags, expiry_time, queue_id) 
     VALUES %L
     `
     await client.query(format(queryStr, batch))
