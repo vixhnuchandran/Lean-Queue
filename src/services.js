@@ -23,9 +23,7 @@ const deleteQueue = async queue => {
     DELETE FROM queues
     WHERE id = ${queue} ;
     `
-    const result = await client.query(queryStr)
-    queue = result.rows[0].id
-    return queue
+    await client.query(queryStr)
   } catch (err) {
     customLogger("error", red, `Error in createQueue: ${err.stack}`)
   }
