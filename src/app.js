@@ -18,11 +18,11 @@ app.use(async (req, res, next) => {
 
 // routes
 app.get("/", (req, res) => {
-  res.sendStatus(200).send(`Lean Queue application`)
+  res.sendStatus(200)
 })
 app.use("/", routes)
 app.get("/*", (req, res) => {
-  res.sendStatus(400).send(`Error 404`)
+  res.sendStatus(404)
 })
 
 // error handler
