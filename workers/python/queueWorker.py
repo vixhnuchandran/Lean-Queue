@@ -3,29 +3,40 @@ import json
 import requests
 from random import randint
 
-root = "http://127.0.0.1:8383"
+# root = "https://lean-queue.vercel.app/"
+root = "http://127.0.0.1:8383/"
 
-halt_n_execute = False  # make it False or lighting fast execution ;)
+halt_n_execute = True  # make it False or lighting fast execution ;)
 
 
 def execute_task(num1, num2, operation_type):
-    if operation_type == "add":
+    if operation_type == "addition":
         return num1 + num2
-    elif operation_type == "subtract":
+    elif operation_type == "subtraction":
         return num1 - num2
-    elif operation_type == "multiply":
+    elif operation_type == "multiplication":
         return num1 * num2
-    elif operation_type == "divide":
+    elif operation_type == "division":
         return num1 / num2
     else:
         raise ValueError("Unsupported operation type: " + operation_type)
 
 
-def get_next_task(queue=None, operation_type=None):
+def get_next_task(queue=None, operation_type=None, tags=None, priority=None):
     try:
-        request_body = {"queue": queue} if queue else {"type": operation_type}
+        request_body = {
+            "queue": queue,
+            "priority": priority
+        } if queue else {
+            "tags": tags,
+            "priority": priority
+        } if tags else {
+            "type": operation_type,
+            "priority": priority
+        }
+        print(request_body)
         response = requests.post(
-            root + "/get-next-available-task", json=request_body)
+            root + "get-next-available-task", json=request_body)
 
         data = response.json()
         return data
@@ -36,7 +47,7 @@ def get_next_task(queue=None, operation_type=None):
 def send_results(task_id, result, error):
     try:
         response = requests.post(
-            root + "/submit-results",
+            root + "submit-results",
             json={"id": task_id, "result": result, "error": error},
         )
         return response
@@ -45,21 +56,18 @@ def send_results(task_id, result, error):
 
 
 def run_worker():
-    valid_operation_types = ["add", "subtract", "multiply", "divide"]
-    operation_type = input(
-        'Type & enter operation type ["add", "subtract", "multiply", "divide"] : ')
-
-    while operation_type.strip() not in valid_operation_types:
-        print("Invalid operation type. Please enter a valid operation type.")
-        operation_type = input("Type & enter operation type:")
-
+    queue = 63  # change queue id here
+    priority = None  # change to required priority [1-10]
     while True:
         try:
-            print(f"\nFetching tasks...")
             if halt_n_execute:
-                input("Press Enter to start processing...")
+                input("Press Enter to get next Task.")
+            print(f"\nFetching tasks...")
 
-            response = get_next_task(operation_type=operation_type)
+            response = get_next_task(
+                queue=queue, priority=priority)
+            if halt_n_execute:
+                input("Press Enter to continue...")
             if isinstance(response, dict) and "message" in response:
                 print("\nNo tasks found, worker going to sleep mode")
                 time.sleep(20)
@@ -67,7 +75,7 @@ def run_worker():
 
             print(f"Task found\nTask details: {json.dumps(response)}")
 
-            task_id, params = response["id"], response["params"]
+            task_id, params, operation_type = response["id"], response["params"], response["type"]
             num1, num2 = params["num1"], params["num2"]
             if halt_n_execute:
                 input("Press Enter to execute...")
