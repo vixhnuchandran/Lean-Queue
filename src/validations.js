@@ -6,12 +6,13 @@ const isQueueIdValid = queueId => {
   }
 }
 
-const isTagValid = tag => {
-  if (typeof tag === "string") {
-    return true
-  } else {
-    return false
-  }
+const doesQueueExist = async queueId => {
+  const queryStr = `
+  SELECT EXISTS 
+    (SELECT 1 FROM queues WHERE id = ${queueId});
+  `
+  const response = await client.query(queryStr)
+  return response.rows[0].exists
 }
 
 const isQueueTypeValid = type => {
@@ -35,28 +36,45 @@ const areOptionsValid = options => {
   return false
 }
 
-const areQueueParametersValid = (type, tasks, options) => {
-  if (!isQueueTypeValid(type)) {
-    return false
-  } else if (!areAllTasksValid(tasks)) {
-    return false
-  } else if (options !== null) {
-    if (!areOptionsValid(options)) {
-      return false
-    }
-  }
-  return true
-}
-
 const areAllTasksValid = tasks => {
   return Object.entries(tasks).every(([taskId, taskParams]) => {
     return typeof taskParams === "object" && Object.keys(taskParams).length > 0
   })
 }
 
+const validateQueueRequest = (req, res, next) => {
+  try {
+    const { type, tasks, options } = req.body
+
+    if (!type) {
+      throw new QueueError("Missing type")
+    }
+
+    if (!tasks) {
+      throw new QueueError("Missing tasks")
+    }
+
+    if (!validations.isQueueTypeValid(type)) {
+      throw new ValidationError("Invalid type")
+    }
+
+    if (!validations.areAllTasksValid(tasks)) {
+      throw new ValidationError("Invalid tasks")
+    }
+
+    if (options && !validations.areOptionsValid(options)) {
+      throw new ValidationError("Invalid options")
+    }
+
+    next()
+  } catch (err) {
+    handleError(err, res)
+  }
+}
+
 module.exports = {
-  areQueueParametersValid,
-  isTagValid,
+  validateQueueRequest,
+  doesQueueExist,
   isQueueIdValid,
   isQueueTypeValid,
   areOptionsValid,
