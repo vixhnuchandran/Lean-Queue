@@ -28,7 +28,7 @@ app.get("/*", (req, res) => {
 // error handler
 app.use((err, req, res, next) => {
   console.error(err.stack)
-  res.sendStatus(500).send({ error: INTERNAL_SERVER_ERROR })
+  res.status(500).send({ error: INTERNAL_SERVER_ERROR })
   if (req.dbClient) {
     req.dbClient.release()
   }
