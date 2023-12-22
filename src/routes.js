@@ -11,6 +11,7 @@ const INTERNAL_SERVER_ERROR = "Internal server error"
 router.post("/create-queue", async (req, res) => {
   const { type, tasks, options = null, tags, priority = 5 } = req.body
   client = req.dbClient
+  console.log(req.body)
   // validations
   try {
     if (!req.body) {
@@ -64,21 +65,22 @@ router.post("/create-queue", async (req, res) => {
 
 router.post("/add-tasks", async (req, res) => {
   const { queue, tasks, options = null, tags, priority = 5 } = req.body
-
   client = req.dbClient
+
   // validation
   try {
+    const queueExists = await validations.doesQueueExist(queue)
+
     if (!queue) {
       throw new QueueError("Missing queue")
     }
     if (!tasks) {
       throw new QueueError("Missing tasks")
     }
-    if (
-      queue &&
-      (!validations.isQueueIdValid(queue) ||
-        !(await validations.doesQueueExist(queue)))
-    ) {
+    if (queue && !validations.isQueueIdValid(queue)) {
+      throw new ValidationError("Invalid queue")
+    }
+    if (!queueExists) {
       throw new ValidationError("Invalid queue")
     }
     if (tasks && !validations.areAllTasksValid(tasks)) {
@@ -202,9 +204,7 @@ router.post("/submit-results", async (req, res) => {
     }
   }
 })
-/**
- * Route for handling GET request to get the results using queue id
- */
+
 router.get("/get-results/:queue", async (req, res) => {
   const queue = req.params.queue
   client = req.dbClient
@@ -247,9 +247,6 @@ router.get("/get-results/:queue", async (req, res) => {
   }
 })
 
-/**
- * Route for handling GET request to get the results using queue id
- */
 router.get("/status/:queue", async (req, res) => {
   const queue = req.params.queue
 
