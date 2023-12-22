@@ -1,5 +1,3 @@
-const seedrandom = require("seedrandom")
-
 const colors = {
   reset: "\x1b[0m",
   red: "\x1b[31m",
@@ -21,15 +19,6 @@ const blue = text => colorize(text, "blue")
 const magenta = text => colorize(text, "magenta")
 const cyan = text => colorize(text, "cyan")
 
-/**
- * Logs a message using the specified console method and text color.
- *
- * @param {string} consoleMethod - The console method to use ("log", "error", "warn", "info").
- * @param {function} color - available ("red" "green", "yellow", "blue", "magenta", "cyan").
- * @param {string} consoleMessage - The console message to be logged.
- * @param {...any} args - For future usage.
- * eg: customLogger("log", green, `Hello`)
- */
 const customLogger = (consoleMethod, color, consoleMessage, ...args) => {
   console[consoleMethod](color(consoleMessage))
 }
