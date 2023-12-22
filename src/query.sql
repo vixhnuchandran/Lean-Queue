@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS queues (
   id SERIAL PRIMARY KEY,
   type VARCHAR(20) NOT NULL ,
+  tags VARCHAR(255)[],
   options JSONB 
 );
   
@@ -11,7 +12,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id SERIAL PRIMARY KEY,
   task_id VARCHAR(255) NOT NULL,
   params JSONB NOT NULL,
-  tags VARCHAR(255),
+  priority INT DEFAULT 5 ,
   status task_status DEFAULT 'available',
   result JSONB DEFAULT NULL,
   start_time TIMESTAMP DEFAULT NULL,
