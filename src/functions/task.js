@@ -2,11 +2,11 @@ const { red, customLogger, green, yellow } = require("../utils")
 const format = require("pg-format")
 const { executeQueriesWithDebug } = require("../debug")
 
-let isDebugMode = false
+let isDebugMode = true
 
 const getNextAvailableTaskByQueue = async (queue, priority) => {
   if (isDebugMode) {
-    customLogger('info', yellow, 'Using getNextAvailableTaskByQueue')
+    customLogger("info", yellow, "Using getNextAvailableTaskByQueue")
   }
 
   let data = null
@@ -65,7 +65,7 @@ const getNextAvailableTaskByQueue = async (queue, priority) => {
 
 const getNextAvailableTaskByType = async (type, priority) => {
   if (isDebugMode) {
-    customLogger('info', yellow, 'Using getNextAvailableTaskByType')
+    customLogger("info", yellow, "Using getNextAvailableTaskByType")
   }
   let data = null
   try {
@@ -124,7 +124,7 @@ const getNextAvailableTaskByType = async (type, priority) => {
 
 const getNextAvailableTaskByTags = async (tags, priority) => {
   if (isDebugMode) {
-    customLogger('info', yellow, 'Using getNextAvailableTaskByTags')
+    customLogger("info", yellow, "Using getNextAvailableTaskByTags")
   }
   let data = null
   try {
@@ -182,7 +182,7 @@ const getNextAvailableTaskByTags = async (tags, priority) => {
 
 const getNextAvailableTaskByPriority = async priority => {
   if (isDebugMode) {
-    customLogger('info', yellow, 'Using getNextAvailableTaskByPriority')
+    customLogger("info", yellow, "Using getNextAvailableTaskByPriority")
   }
   let data = null
   try {
