@@ -60,7 +60,7 @@ const addTasks = async (queue, tasks, options) => {
   try {
     const expiryTime = new Date()
     expiryTime.setTime(
-      expiryTime.getTime() + (options?.expiryTime ?? 2 * 60 * 1000) // 2 minutes
+      expiryTime.getTime() + (options?.expiryTime ?? 15 * 1000) // 15 seconds
     )
 
     const batchSize = 4096
