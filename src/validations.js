@@ -16,7 +16,7 @@ const doesQueueExist = async queueId => {
 }
 
 const isQueueTypeValid = type => {
-  if (typeof type === "string") {
+  if (typeof type === "string" && /^[a-z0-9-]+$/.test(type)) {
     return true
   } else {
     return false
@@ -31,7 +31,9 @@ const areOptionsValid = options => {
     const expiryTime = options.expiryTime
     const isExpiryTimeValid = Number.isInteger(expiryTime) && expiryTime > 0
 
-    return isCallbackUrlValid && isExpiryTimeValid
+    if (isCallbackUrlValid && isExpiryTimeValid) {
+      return true
+    }
   }
   return false
 }
@@ -42,41 +44,11 @@ const areAllTasksValid = tasks => {
   })
 }
 
-const validateQueueRequest = (req, res, next) => {
-  try {
-    const { type, tasks, options } = req.body
-
-    if (!type) {
-      throw new QueueError("Missing type")
-    }
-
-    if (!tasks) {
-      throw new QueueError("Missing tasks")
-    }
-
-    if (!validations.isQueueTypeValid(type)) {
-      throw new ValidationError("Invalid type")
-    }
-
-    if (!validations.areAllTasksValid(tasks)) {
-      throw new ValidationError("Invalid tasks")
-    }
-
-    if (options && !validations.areOptionsValid(options)) {
-      throw new ValidationError("Invalid options")
-    }
-
-    next()
-  } catch (err) {
-    handleError(err, res)
-  }
-}
-
 module.exports = {
-  validateQueueRequest,
   doesQueueExist,
   isQueueIdValid,
   isQueueTypeValid,
   areOptionsValid,
   areAllTasksValid,
+  doesQueueExist,
 }
