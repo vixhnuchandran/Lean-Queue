@@ -20,11 +20,10 @@ const {
 const { QueueError, ValidationError } = require("./error")
 require("dotenv").config()
 
-
 const INTERNAL_SERVER_ERROR = "Internal server error"
 
 routes.post("/create-queue", async (req, res) => {
-  const { type, tasks, options, tags, priority } = req.body
+  const { type, tasks, options, tags } = req.body
   client = req.dbClient
   console.log(req.body)
   // validations
@@ -62,10 +61,9 @@ routes.post("/create-queue", async (req, res) => {
   try {
     const { queue, numTasks } = await createQueueAndAddTasks(
       type,
-      tags,
-      options,
       tasks,
-      priority
+      tags,
+      options
     )
     return res.status(200).json({ queue, numTasks })
   } catch (err) {
