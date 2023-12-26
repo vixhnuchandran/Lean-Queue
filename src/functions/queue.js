@@ -1,6 +1,6 @@
 const { performance } = require("perf_hooks")
 const format = require("pg-format")
-const { red, green, yellow, customLogger } = require("./utils")
+const { red, green, yellow, customLogger } = require("../utils")
 
 const createQueueAndAddTasks = async (type, tags, options, tasks, priority) => {
   let queue, numTasks
@@ -31,19 +31,26 @@ const createQueueAndAddTasks = async (type, tags, options, tasks, priority) => {
   }
 }
 
-const createQueue = async (type, tags = null, options = null) => {
+const createQueue = async (type, tags, options) => {
   let queue = null
-  const tagsArray =
-    tags !== null ? `ARRAY[${tags.map(tag => `'${tag}'`).join(",")}]` : "NULL"
+  let tagsArray = null
 
+  if (tags !== null && tags !== undefined && tags.length > 0) {
+    tagsArray = tags.map(tag => `'${tag}'`)
+  }
   try {
     const queryStr = `
       INSERT INTO queues (type, tags, options) 
-      VALUES ('${type}', ${tagsArray},
-              ${options !== null ? `'${JSON.stringify(options)}'` : "NULL"})
-      RETURNING id;
-    `
-    queue = await client.query(queryStr)
+      VALUES ($1, $2, $3)
+      RETURNING id;`
+
+    const queryParams = [
+      type,
+      tagsArray,
+      options !== null ? JSON.stringify(options) : null,
+    ]
+
+    queue = await client.query(queryStr, queryParams)
     return queue.rows[0].id
   } catch (err) {
     customLogger("error", red, `Error in createQueue: ${err.stack}`)
