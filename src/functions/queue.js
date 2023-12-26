@@ -2,15 +2,16 @@ const { performance } = require("perf_hooks")
 const format = require("pg-format")
 const { red, green, yellow, customLogger } = require("../utils")
 
-const createQueueAndAddTasks = async (type, tags, options, tasks, priority) => {
+const createQueueAndAddTasks = async (type, tasks, tags, options) => {
   let queue, numTasks
+  console.log(type, tags, options)
 
   try {
     let queue = await createQueue(type, tags, options)
 
     if (queue) {
       await client.query("BEGIN")
-      numTasks = await addTasks(queue, tasks, priority, options)
+      numTasks = await addTasks(queue, tasks, options)
       await client.query("COMMIT")
     } else {
       customLogger(
@@ -35,15 +36,14 @@ const createQueue = async (type, tags, options) => {
   let queue = null
   let tagsArray = null
 
-  if (tags !== null && tags !== undefined && tags.length > 0) {
+  if (Array.isArray(tags) && tags.length > 0) {
     tagsArray = tags.map(tag => `'${tag}'`)
   }
   try {
     const queryStr = `
-      INSERT INTO queues (type, tags, options) 
-      VALUES ($1, $2, $3)
-      RETURNING id;`
-
+    INSERT INTO queues (type, tags, options) 
+    VALUES ($1, ARRAY[$2], $3)
+    RETURNING id;`
     const queryParams = [
       type,
       tagsArray,
@@ -57,7 +57,7 @@ const createQueue = async (type, tags, options) => {
   }
 }
 
-const addTasks = async (queue, tasks, priority, options) => {
+const addTasks = async (queue, tasks, options) => {
   try {
     const expiryTime = new Date()
     expiryTime.setTime(
@@ -79,8 +79,8 @@ const addTasks = async (queue, tasks, priority, options) => {
       const batchEnd = (i + 1) * batchSize
       const batch = totalEntries
         .slice(batchStart, batchEnd)
-        .map(([taskId, params]) => {
-          return [taskId, params, priority, expiryTime, queue]
+        .map(([id, data]) => {
+          return [data.taskId, data.params, data.priority, expiryTime, queue]
         })
       try {
         await addTasksByBatch(batch)
@@ -118,6 +118,7 @@ const addTasks = async (queue, tasks, priority, options) => {
 
 const addTasksByBatch = async batch => {
   try {
+    console.log(batch)
     const queryStr = `
     INSERT INTO tasks (task_id, params, priority , expiry_time, queue_id) 
     VALUES %L
