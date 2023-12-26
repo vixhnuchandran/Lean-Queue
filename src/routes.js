@@ -154,7 +154,6 @@ routes.post("/get-next-available-task", async (req, res) => {
       })
     }
 
-    await (ms => new Promise(resolve => setTimeout(resolve, ms)))(10000)()
     return res.status(200).json({
       id: nextAvailableTask.id,
       params: nextAvailableTask.params,
