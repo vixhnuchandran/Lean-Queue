@@ -1,5 +1,5 @@
 const routes = require("express").Router()
-const { customLogger, red, delay } = require("./utils")
+const { customLogger, red } = require("./utils")
 const { createQueueAndAddTasks, addTasks } = require("./functions/queue")
 const {
   getNextAvailableTaskByPriority,
@@ -153,8 +153,8 @@ routes.post("/get-next-available-task", async (req, res) => {
         message: "No available task found",
       })
     }
-    await delay(3, 7)
-    console.log(`delay applied`)
+
+    await (ms => new Promise(resolve => setTimeout(resolve, ms)))(10000)()
     return res.status(200).json({
       id: nextAvailableTask.id,
       params: nextAvailableTask.params,
