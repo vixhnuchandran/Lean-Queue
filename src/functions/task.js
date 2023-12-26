@@ -2,7 +2,7 @@ const { red, customLogger, green, yellow } = require("../utils")
 const format = require("pg-format")
 const { executeQueriesWithDebug } = require("../debug")
 
-let isDebugMode = true
+let isDebugMode = false
 
 const getNextAvailableTaskByQueue = async (queue, priority) => {
   if (isDebugMode) {
