@@ -4,7 +4,6 @@ const { red, green, yellow, customLogger } = require("../utils")
 
 const createQueueAndAddTasks = async (type, tasks, tags, options) => {
   let queue, numTasks
-  console.log(type, tags, options)
 
   try {
     let queue = await createQueue(type, tags, options)
@@ -35,14 +34,14 @@ const createQueueAndAddTasks = async (type, tasks, tags, options) => {
 const createQueue = async (type, tags, options) => {
   let queue = null
   let tagsArray = null
-
   if (Array.isArray(tags) && tags.length > 0) {
-    tagsArray = tags.map(tag => `'${tag}'`)
+    tagsArray = tags.map(tag => `${tag}`)
   }
+
   try {
     const queryStr = `
     INSERT INTO queues (type, tags, options) 
-    VALUES ($1, ARRAY[$2], $3)
+    VALUES ($1, $2,  $3)
     RETURNING id;`
     const queryParams = [
       type,
@@ -118,7 +117,6 @@ const addTasks = async (queue, tasks, options) => {
 
 const addTasksByBatch = async batch => {
   try {
-    console.log(batch)
     const queryStr = `
     INSERT INTO tasks (task_id, params, priority , expiry_time, queue_id) 
     VALUES %L
