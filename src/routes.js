@@ -25,7 +25,6 @@ const INTERNAL_SERVER_ERROR = "Internal server error"
 routes.post("/create-queue", async (req, res) => {
   const { type, tasks, options, tags } = req.body
   client = req.dbClient
-  console.log(req.body)
   // validations
   try {
     if (!req.body) {
