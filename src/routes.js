@@ -29,6 +29,7 @@ const {
 } = require("./constants")
 require("dotenv").config()
 
+// ✅
 routes.post("/create-queue", async (req, res) => {
   client = req.dbClient
   let requestBody
@@ -77,7 +78,7 @@ routes.post("/add-tasks", async (req, res) => {
     if (!req.body) throw new ValidationError("empty request body")
 
     requestBody = req.body
-    const { type, tasks, options, tags } = requestBody
+    const { queue, tasks, options } = requestBody
 
     if (!queue || !tasks)
       throw new ValidationError("queue and tasks are required.")
@@ -92,7 +93,7 @@ routes.post("/add-tasks", async (req, res) => {
   }
 
   try {
-    const { type, tasks, options, tags } = requestBody
+    const { queue, tasks, options } = requestBody
 
     const numTasks = await addTasks(queue, tasks, options)
 
@@ -104,6 +105,7 @@ routes.post("/add-tasks", async (req, res) => {
   }
 })
 
+// ✅
 routes.post("/get-next-available-task", async (req, res) => {
   client = req.dbClient
   let requestBody
@@ -147,6 +149,7 @@ routes.post("/get-next-available-task", async (req, res) => {
   }
 })
 
+// ✅
 routes.post("/submit-results", async (req, res) => {
   client = req.dbClient
 
@@ -163,6 +166,7 @@ routes.post("/submit-results", async (req, res) => {
   }
 })
 
+// ✅
 routes.get("/get-results/:queue", async (req, res) => {
   client = req.dbClient
   let queue
@@ -191,6 +195,7 @@ routes.get("/get-results/:queue", async (req, res) => {
   }
 })
 
+// ✅
 routes.get("/status/:queue", async (req, res) => {
   client = req.dbClient
   let queue
