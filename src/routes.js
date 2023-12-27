@@ -61,6 +61,7 @@ routes.post("/create-queue", async (req, res) => {
       tags,
       options
     )
+
     const result = { queue, numTasks }
 
     return res.status(HTTP_OK).json(result)
