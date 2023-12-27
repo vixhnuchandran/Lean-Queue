@@ -35,7 +35,8 @@ routes.post("/create-queue", async (req, res) => {
   let requestBody
 
   try {
-    if (!req.body) throw new ValidationError("empty request body")
+    if (!req.body || Object.keys(req.body).length === 0)
+      throw new ValidationError("empty request body")
 
     requestBody = req.body
     const { type, tasks, options, tags } = requestBody
@@ -76,7 +77,8 @@ routes.post("/add-tasks", async (req, res) => {
   let requestBody
 
   try {
-    if (!req.body) throw new ValidationError("empty request body")
+    if (!req.body || Object.keys(req.body).length === 0)
+      throw new ValidationError("empty request body")
 
     requestBody = req.body
     const { queue, tasks, options } = requestBody
@@ -112,7 +114,8 @@ routes.post("/get-next-available-task", async (req, res) => {
   let requestBody
 
   try {
-    if (!req.body) throw new ValidationError("empty request body")
+    if (!req.body || Object.keys(req.body).length === 0)
+      throw new ValidationError("empty request body")
 
     requestBody = req.body
 
