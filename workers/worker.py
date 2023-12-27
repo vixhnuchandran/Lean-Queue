@@ -126,8 +126,8 @@ def parse_value(value):
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Script to run worker with different fetch types.")
-    parser.add_argument("--using", choices=["type", "queue", "tasks"],
-                        required=True, help="Specify the choices (type/queue/tasks).")
+    parser.add_argument("--using", choices=["type", "queue", "tags"],
+                        required=True, help="Specify the choices (type/queue/tags).")
     parser.add_argument("--value", type=parse_value,
                         help="Specify the value for the fetch type.")
     return parser.parse_args()
