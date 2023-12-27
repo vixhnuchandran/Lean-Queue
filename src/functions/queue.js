@@ -36,7 +36,6 @@ const createQueue = async (type, tags, options) => {
   let tagsArray = null
   if (Array.isArray(tags) && tags.length > 0)
     tagsArray = tags.map(tag => `${tag}`)
-
   try {
     const queryStr = `
     INSERT INTO queues (type, tags, options) 
