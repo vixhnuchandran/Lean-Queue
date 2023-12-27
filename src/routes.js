@@ -165,11 +165,11 @@ routes.post("/submit-results", async (req, res) => {
 
 routes.get("/get-results/:queue", async (req, res) => {
   client = req.dbClient
+  let queue
 
   try {
     if (!req.params.queue) throw new ValidationError("missing queue")
-
-    const queue = req.params.queue
+    queue = req.params.queue
 
     validateQueueId(queue)
   } catch (err) {
@@ -193,11 +193,12 @@ routes.get("/get-results/:queue", async (req, res) => {
 
 routes.get("/status/:queue", async (req, res) => {
   client = req.dbClient
+  let queue
 
   try {
     if (!req.params.queue) throw new ValidationError("missing queue")
 
-    const queue = req.params.queue
+    queue = req.params.queue
 
     validateQueueId(queue)
   } catch (err) {
@@ -221,6 +222,7 @@ routes.get("/status/:queue", async (req, res) => {
   }
 })
 
+// ✅
 routes.post("/delete-everything/:queue", async (req, res) => {
   client = req.dbClient
   let queue
@@ -248,6 +250,7 @@ routes.post("/delete-everything/:queue", async (req, res) => {
   }
 })
 
+// ✅
 routes.post("/delete-queue/:queue", async (req, res) => {
   client = req.dbClient
   let queue
