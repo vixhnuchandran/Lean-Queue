@@ -145,6 +145,28 @@ pnpm start
 
   ```
 
+- **Queue Status:**
+  Retrieve the status of a queue, including total tasks count, completed tasks, and tasks with errors.
+
+  ```plaintext
+
+  GET /status/<queueId>
+
+  ```
+
+  ![Alt text](<Screenshot from 2023-12-27 19-44-53.png>)
+
+- **Queue Result:**
+  Retrieve the results of completed tasks and tasks with errors for a specific queue.
+
+  ```plaintext
+
+  GET /get-results/<queueId>
+
+  ```
+
+  ![Alt text](image-1.png)
+
 # Worker
 
 ### Using queue Type
