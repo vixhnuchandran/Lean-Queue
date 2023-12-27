@@ -4,7 +4,7 @@ const { executeQueriesWithDebug } = require("../debug")
 
 let isDebugMode = false
 
-const getNextAvailableTaskByQueue = async (queue, priority) => {
+const getNextAvailableTaskByQueue = async queue => {
   if (isDebugMode) {
     customLogger("info", yellow, "Using getNextAvailableTaskByQueue")
   }
@@ -29,27 +29,28 @@ const getNextAvailableTaskByQueue = async (queue, priority) => {
     WHERE queues.id = %L
       AND (tasks.status = 'available' OR 
            (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
-      AND (tasks.priority)::int = COALESCE(%L, (tasks.priority)::int)
     ORDER BY (tasks.priority)::int DESC
-    LIMIT 1
-    FOR UPDATE SKIP LOCKED;
+    LIMIT 1;
   `,
-      queue,
-      priority
+      queue
     )
 
-    const result = await client.query(mainQuery)
+    const result = await executeQueriesWithDebug(
+      isDebugMode,
+      debugQuery,
+      mainQuery
+    )
     data = result.rows[0]
+    console.log(data)
     if (!data) {
       customLogger("warn", yellow, "No tasks available right now!")
     } else if (data) {
       const mainQuery = format(
         `
       UPDATE tasks
-      SET status = %L, start_time = CURRENT_TIMESTAMP
+      SET status = "processing", start_time = CURRENT_TIMESTAMP
       WHERE id = %L;
-    `,
-        "processing",
+       `,
         data.id
       )
 
@@ -63,7 +64,7 @@ const getNextAvailableTaskByQueue = async (queue, priority) => {
   return data
 }
 
-const getNextAvailableTaskByType = async (type, priority) => {
+const getNextAvailableTaskByType = async type => {
   if (isDebugMode) {
     customLogger("info", yellow, "Using getNextAvailableTaskByType")
   }
@@ -82,18 +83,15 @@ const getNextAvailableTaskByType = async (type, priority) => {
 
     const mainQuery = format(
       `
-    SELECT tasks.*
-    FROM tasks
-    JOIN queues ON tasks.queue_id = queues.id
-    WHERE queues.type = %L
-      AND (tasks.status = 'available' OR 
-           (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
-      AND (tasks.priority)::int = COALESCE(%L, (tasks.priority)::int)
-    ORDER BY (tasks.priority)::int DESC
-    LIMIT 1
-    FOR UPDATE SKIP LOCKED;`,
-      type,
-      priority
+      SELECT tasks.*
+      FROM tasks
+      JOIN queues ON tasks.queue_id = queues.id
+      WHERE queues.type = %L
+        AND (tasks.status = 'available' OR 
+             (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
+      ORDER BY (tasks.priority)::int DESC
+      LIMIT 1;`,
+      type
     )
 
     const result = await executeQueriesWithDebug(
@@ -102,7 +100,6 @@ const getNextAvailableTaskByType = async (type, priority) => {
       mainQuery
     )
     data = result.rows[0]
-
     if (!data) {
       customLogger("warn", yellow, "No tasks available right now!")
     } else {
@@ -122,7 +119,7 @@ const getNextAvailableTaskByType = async (type, priority) => {
   return data
 }
 
-const getNextAvailableTaskByTags = async (tags, priority) => {
+const getNextAvailableTaskByTags = async tags => {
   if (isDebugMode) {
     customLogger("info", yellow, "Using getNextAvailableTaskByTags")
   }
@@ -147,10 +144,9 @@ const getNextAvailableTaskByTags = async (tags, priority) => {
     WHERE queues.tags @> %L::VARCHAR(255)[]
       AND (tasks.status = 'available' OR
            (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
-      AND (tasks.priority)::int = COALESCE(%L, (tasks.priority)::int)
     ORDER BY (tasks.priority)::int DESC
     LIMIT 1
-    FOR UPDATE SKIP LOCKED;
+    ;
   `,
       tagsCondition,
       priority
@@ -180,63 +176,6 @@ const getNextAvailableTaskByTags = async (tags, priority) => {
   return data
 }
 
-const getNextAvailableTaskByPriority = async priority => {
-  if (isDebugMode) {
-    customLogger("info", yellow, "Using getNextAvailableTaskByPriority")
-  }
-  let data = null
-  try {
-    await client.query("BEGIN")
-
-    const debugQuery = format(
-      ` 
-    SELECT tasks.*
-    FROM tasks
-    JOIN queues ON tasks.queue_id = queues.id
-    WHERE queues.type = %L`,
-      type
-    )
-    const mainQuery = format(
-      `
-    SELECT tasks.*, queues.type as queue_type
-    FROM tasks
-    JOIN queues ON tasks.queue_id = queues.id
-    WHERE tasks.priority = %L
-      AND (tasks.status = 'available' OR 
-           (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
-    ORDER BY (tasks.priority)::int DESC
-    LIMIT 1
-    FOR UPDATE SKIP LOCKED;
-  `,
-      priority
-    )
-
-    const result = await executeQueriesWithDebug(
-      isDebugMode,
-      debugQuery,
-      mainQuery
-    )
-    data = result.rows[0]
-
-    if (!data) {
-      customLogger("warn", yellow, "No tasks available right now!")
-    } else {
-      const mainQuery = `
-        UPDATE tasks SET status = 'processing', start_time =  CURRENT_TIMESTAMP
-        WHERE id = ${data.id};
-        `
-      await client.query(mainQuery)
-
-      await client.query("COMMIT")
-    }
-  } catch (err) {
-    await client.query("ROLLBACK")
-    customLogger("error", red, `Error in getNextTaskByType: ${err.message}`)
-  }
-
-  return data
-}
-
 const submitResults = async ({ id, result, error }) => {
   try {
     const resultObj = error ? { error } : { result }
@@ -254,6 +193,8 @@ const submitResults = async ({ id, result, error }) => {
         RETURNING tasks.queue_id, queues.options->>'callback' AS callback_url;
       `
 
+    await client.query("BEGIN")
+
     const response = await client.query(mainQuery, [
       error,
       JSON.stringify(resultObj),
@@ -268,12 +209,11 @@ const submitResults = async ({ id, result, error }) => {
         await postResults(callbackUrl, await getResults(queue))
       }
     }
+
+    await client.query("COMMIT")
   } catch (err) {
-    customLogger(
-      "error",
-      red,
-      `Error in const submitResults = async ({ : ${err.stack}`
-    )
+    await client.query("ROLLBACK")
+    customLogger("error", red, `error in 'submitResults' : ${err.message}`)
   }
 }
 
@@ -291,7 +231,7 @@ const getStatus = async queue => {
 
     return response.rows[0]
   } catch (err) {
-    customLogger("error", red, `Error in getStatus: ${err.stack}`)
+    customLogger("error", red, `error in 'getStatus': ${err.message}`)
   }
 }
 
@@ -311,7 +251,7 @@ const getResults = async queue => {
 
     return { results }
   } catch (err) {
-    customLogger("error", red, `Error in getResults: ${err.stack}`)
+    customLogger("error", red, `error in 'getResults': ${err.message}`)
   }
 }
 
@@ -325,7 +265,7 @@ const postResults = async (url, results) => {
       body: JSON.stringify(results),
     })
   } catch (err) {
-    customLogger("error", red, `Error in postResults: ${err.stack}`)
+    customLogger("error", red, `error in 'postResults': ${err.message}`)
   }
 }
 
@@ -361,7 +301,6 @@ const completedTaskCountInQueue = async queue => {
 }
 
 module.exports = {
-  getNextAvailableTaskByPriority,
   getNextAvailableTaskByType,
   getNextAvailableTaskByQueue,
   getNextAvailableTaskByTags,
