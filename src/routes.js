@@ -49,7 +49,7 @@ routes.post("/create-queue", async (req, res) => {
 
     if (options) validateOptions(options)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -66,7 +66,7 @@ routes.post("/create-queue", async (req, res) => {
 
     return res.status(HTTP_OK).json(result)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -93,7 +93,7 @@ routes.post("/add-tasks", async (req, res) => {
 
     if (options) validateOptions(options)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -103,7 +103,7 @@ routes.post("/add-tasks", async (req, res) => {
 
     return res.json({ numTasks })
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -129,7 +129,7 @@ routes.post("/get-next-available-task", async (req, res) => {
 
     if (type) validateQueueType(type)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -151,7 +151,7 @@ routes.post("/get-next-available-task", async (req, res) => {
       type: nextAvailableTask.queue_type,
     })
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -168,7 +168,7 @@ routes.post("/submit-results", async (req, res) => {
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -186,7 +186,7 @@ routes.get("/get-results/:queue", async (req, res) => {
 
     validateQueueId(queue)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -198,7 +198,7 @@ routes.get("/get-results/:queue", async (req, res) => {
         .json({ message: "No completed tasks found" })
     else return res.status(HTTP_OK).json(response)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -216,7 +216,7 @@ routes.get("/status/:queue", async (req, res) => {
 
     validateQueueId(queue)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -230,7 +230,7 @@ routes.get("/status/:queue", async (req, res) => {
       errorTasks: error_count,
     })
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -248,7 +248,7 @@ routes.post("/delete-everything/:queue", async (req, res) => {
 
     validateQueueId(queue)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -258,7 +258,7 @@ routes.post("/delete-everything/:queue", async (req, res) => {
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
 
     return res.sendStatus(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
@@ -277,7 +277,7 @@ routes.post("/delete-queue/:queue", async (req, res) => {
 
     validateQueueId(queue)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
   }
 
   try {
@@ -287,7 +287,7 @@ routes.post("/delete-queue/:queue", async (req, res) => {
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
-    handleAppErrors(err, res)
+    return handleAppErrors(err, res)
 
     return res.sendStatus(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
