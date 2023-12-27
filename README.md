@@ -108,10 +108,6 @@ pnpm start
 
     "queue": 4,
 
-    "options": {
-      "expiryTime": 150000,
-      "callback": "https://d7db-116-68-85-88.ngrok-free.app"
-    }
   }
 
   ```
