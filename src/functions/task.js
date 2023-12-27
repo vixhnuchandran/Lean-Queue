@@ -125,6 +125,7 @@ const getNextAvailableTaskByTags = async tags => {
   }
   let data = null
   try {
+
     let tagsArray = Array.isArray(tags) ? tags : JSON.parse(tags)
     const tagsCondition = tagsArray.map(tag => tag)
 
@@ -144,7 +145,6 @@ const getNextAvailableTaskByTags = async tags => {
       tagsCondition
     )
 
-    console.log(mainQuery)
     const debugQuery = format(
       ` 
     SELECT tasks.*
