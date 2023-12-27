@@ -1,12 +1,15 @@
 import time
 import json
 import requests
-from random import randint
+import random
+import argparse
 
-# root = "https://lean-queue.vercel.app/"
-root = "http://127.0.0.1:8383/"
 
-halt_n_execute = True  # make it False or lighting fast execution ;)
+root = "https://lean-queue.vercel.app/"
+# root = "http://127.0.0.1:8383/"
+
+halt_n_execute = False  # make it False or lighting fast execution ;)
+delay = random.uniform(3, 8)
 
 
 def execute_task(num1, num2, operation_type):
@@ -22,26 +25,30 @@ def execute_task(num1, num2, operation_type):
         raise ValueError("Unsupported operation type: " + operation_type)
 
 
-def get_next_task(queue=None, operation_type=None, tags=None, priority=None):
-    try:
-        request_body = {
-            "queue": queue,
-            "priority": priority
-        } if queue else {
-            "tags": tags,
-            "priority": priority
-        } if tags else {
-            "type": operation_type,
-            "priority": priority
-        }
-        print(request_body)
-        response = requests.post(
-            root + "get-next-available-task", json=request_body)
+def get_next_task(queue=None, operation_type=None, tags=None, priority=None, timeout=10, retries=3):
+    for _ in range(retries):
+        try:
+            request_body = {
+                "queue": queue,
+                "priority": priority
+            } if queue else {
+                "tags": tags,
+                "priority": priority
+            } if tags else {
+                "type": operation_type,
+                # "priority": priority
+            }
+            response = requests.post(
+                root + "get-next-available-task", json=request_body, timeout=timeout)
 
-        data = response.json()
-        return data
-    except Exception as error:
-        return None
+            data = response.json()
+            return data
+        except requests.Timeout:
+            print(f"Timeout occurred. Retrying...")
+        except Exception as error:
+            print(f"Error: {error}. Retrying...")
+
+    return None
 
 
 def send_results(task_id, result, error):
@@ -56,8 +63,7 @@ def send_results(task_id, result, error):
 
 
 def run_worker():
-    queue = 63  # change queue id here
-    priority = None  # change to required priority [1-10]
+    operation_type = "addition"  # change to required type
     while True:
         try:
             if halt_n_execute:
@@ -65,17 +71,18 @@ def run_worker():
             print(f"\nFetching tasks...")
 
             response = get_next_task(
-                queue=queue, priority=priority)
+                operation_type=operation_type, timeout=10, retries=3)
+            print(response)
             if halt_n_execute:
                 input("Press Enter to continue...")
             if isinstance(response, dict) and "message" in response:
                 print("\nNo tasks found, worker going to sleep mode")
-                time.sleep(20)
+                time.sleep(delay)
                 continue
 
             print(f"Task found\nTask details: {json.dumps(response)}")
 
-            task_id, params, operation_type = response["id"], response["params"], response["type"]
+            task_id, params = response["id"], response["params"]
             num1, num2 = params["num1"], params["num2"]
             if halt_n_execute:
                 input("Press Enter to execute...")
