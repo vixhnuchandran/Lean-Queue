@@ -63,6 +63,8 @@ pnpm start
 
   body:
   {
+    "type": "addition",
+
     "tasks":
       [
         { "taskId": "5001", "params": { "num1": 3, "num2": 56 }, "priority": 7 },
@@ -74,8 +76,9 @@ pnpm start
         { "taskId": "5180", "params": { "num1": 26, "num2": 11 }, "priority": 7 },
         { "taskId": "5181", "params": { "num1": 60, "num2": 39 }, "priority": 7 }
       ],
-    "type": "addition",
+
     "tags": ["arithmetic", "dev"],
+
     "options":
     {
       "expiryTime": 150000,
@@ -94,6 +97,8 @@ pnpm start
   body:
   {
 
+    "queue": 4,
+
     "tasks":
     [
         { "taskId": "5001", "params": { "num1": 3, "num2": 56 }, "priority": 7 },
@@ -106,7 +111,6 @@ pnpm start
         { "taskId": "5181", "params": { "num1": 60, "num2": 39 }, "priority": 7 }
     ],
 
-    "queue": 4,
 
   }
 
