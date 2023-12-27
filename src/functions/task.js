@@ -17,8 +17,8 @@ const getNextAvailableTaskByQueue = async queue => {
     SELECT tasks.*
     FROM tasks
     JOIN queues ON tasks.queue_id = queues.id
-    WHERE queues.type = %L`,
-      type
+    WHERE queues.id = %L`,
+      queue
     )
 
     const mainQuery = format(
@@ -148,8 +148,7 @@ const getNextAvailableTaskByTags = async tags => {
     LIMIT 1
     ;
   `,
-      tagsCondition,
-      priority
+      tagsCondition
     )
 
     const result = await executeQueriesWithDebug(
