@@ -106,12 +106,11 @@ pnpm start
         { "taskId": "5181", "params": { "num1": 60, "num2": 39 }, "priority": 7 }
     ],
 
-    "type": "addition",
-    "tags": ["arithmetic", "dev"],
+    "queue": 4,
 
     "options": {
       "expiryTime": 150000,
-      "callback": "https://sample.url"
+      "callback": "https://d7db-116-68-85-88.ngrok-free.app"
     }
   }
 
