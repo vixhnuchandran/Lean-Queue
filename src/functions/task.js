@@ -144,6 +144,7 @@ const getNextAvailableTaskByTags = async tags => {
       tagsCondition
     )
 
+    console.log(mainQuery)
     const debugQuery = format(
       ` 
     SELECT tasks.*
