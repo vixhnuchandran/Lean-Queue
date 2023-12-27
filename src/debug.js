@@ -1,4 +1,5 @@
 const { performance } = require("perf_hooks")
+
 const executeQueriesWithDebug = async (isDebugMode, debugQuery, mainQuery) => {
   let startTime, endTime, totalTime, data
 
