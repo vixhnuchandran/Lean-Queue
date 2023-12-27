@@ -125,32 +125,34 @@ const getNextAvailableTaskByTags = async tags => {
   }
   let data = null
   try {
-    const tagsCondition = `ARRAY[${tags.map(tag => `'${tag}'`).join(",")}]`
+    let tagsArray = Array.isArray(tags) ? tags : JSON.parse(tags)
+    const tagsCondition = tagsArray.map(tag => tag)
+
     await client.query("BEGIN")
+
+    const mainQuery = format(
+      `
+        SELECT tasks.*, queues.type as queue_type
+        FROM tasks
+        JOIN queues ON tasks.queue_id = queues.id
+        WHERE queues.tags @> ARRAY[%L]::VARCHAR(255)[]
+          AND (tasks.status = 'available' OR
+               (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
+        ORDER BY (tasks.priority)::int DESC
+        LIMIT 1;
+      `,
+      tagsCondition
+    )
 
     const debugQuery = format(
       ` 
     SELECT tasks.*
     FROM tasks
     JOIN queues ON tasks.queue_id = queues.id
-    WHERE queues.type = %L`,
-      type
-    )
-    const mainQuery = format(
-      `
-    SELECT tasks.*, queues.type as queue_type
-    FROM tasks
-    JOIN queues ON tasks.queue_id = queues.id
     WHERE queues.tags @> %L::VARCHAR(255)[]
-      AND (tasks.status = 'available' OR
-           (tasks.status = 'processing' AND tasks.expiry_time < NOW()))
-    ORDER BY (tasks.priority)::int DESC
-    LIMIT 1
-    ;
-  `,
+    `,
       tagsCondition
     )
-
     const result = await executeQueriesWithDebug(
       isDebugMode,
       debugQuery,
@@ -170,7 +172,7 @@ const getNextAvailableTaskByTags = async tags => {
     }
   } catch (err) {
     await client.query("ROLLBACK")
-    customLogger("error", red, `Error in getNextTaskByType: ${err.message}`)
+    customLogger("error", red, `Error in getNextTaskByTags: ${err.message}`)
   }
   return data
 }
