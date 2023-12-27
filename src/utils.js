@@ -23,7 +23,6 @@ const customLogger = (consoleMethod, color, consoleMessage, ...args) => {
   console[consoleMethod](color(consoleMessage))
 }
 
-
 module.exports = {
   customLogger,
   red,
