@@ -26,7 +26,7 @@ const createQueueAndAddTasks = async (type, tasks, tags, options) => {
     customLogger(
       "error",
       red,
-      `Error in createQueueAndAddTasks: ${err.message}`
+      `error in 'createQueueAndAddTasks': ${err.message}`
     )
   }
 }
@@ -34,9 +34,8 @@ const createQueueAndAddTasks = async (type, tasks, tags, options) => {
 const createQueue = async (type, tags, options) => {
   let queue = null
   let tagsArray = null
-  if (Array.isArray(tags) && tags.length > 0) {
+  if (Array.isArray(tags) && tags.length > 0)
     tagsArray = tags.map(tag => `${tag}`)
-  }
 
   try {
     const queryStr = `
@@ -52,7 +51,7 @@ const createQueue = async (type, tags, options) => {
     queue = await client.query(queryStr, queryParams)
     return queue.rows[0].id
   } catch (err) {
-    customLogger("error", red, `Error in createQueue: ${err.stack}`)
+    customLogger("error", red, `error in 'createQueue': ${err.message}`)
   }
 }
 
@@ -60,7 +59,7 @@ const addTasks = async (queue, tasks, options) => {
   try {
     const expiryTime = new Date()
     expiryTime.setTime(
-      expiryTime.getTime() + (options?.expiryTime ?? 15 * 1000) // 15 seconds
+      expiryTime.getTime() + (options?.expiryTime ?? 60 * 1000) // 15 seconds
     )
 
     const batchSize = 4096
@@ -87,9 +86,10 @@ const addTasks = async (queue, tasks, options) => {
         successfulBatches++
       } catch (err) {
         await client.query("ROLLBACK")
-        customLogger("error", red, `Error adding batch ${i + 1}:`)
+        customLogger("error", red, `error adding batch ${i + 1}:`)
       }
       await client.query("COMMIT")
+
       // perf
       endTimeM = performance.now()
       totalTimeM = (endTimeM - startTimeM) / 1000
@@ -104,14 +104,11 @@ const addTasks = async (queue, tasks, options) => {
       yellow,
       `Total tasks: ${totalEntries.length}, Total batches: ${totalBatches}, Batch size: ${batchSize}`
     )
-    if (successfulBatches === totalBatches) {
-      return totalEntries.length
-    } else {
-      return 0
-    }
+    if (successfulBatches === totalBatches) return totalEntries.length
+    else return 0
   } catch (err) {
     await deleteQueue(queue)
-    customLogger("error", red, `Error in addTasks: ${err.message}`)
+    customLogger("error", red, `error in 'addTasks': ${err.message}`)
   }
 }
 
@@ -123,7 +120,19 @@ const addTasksByBatch = async batch => {
     `
     await client.query(format(queryStr, batch))
   } catch (err) {
-    customLogger("error", red, `Error in addTasksByBatch: ${err.stack}`)
+    customLogger("error", red, `error in 'addTasksByBatch': ${err.message}`)
+  }
+}
+
+const deleteTasks = async queue => {
+  try {
+    const queryStr = `
+      DELETE FROM tasks
+      WHERE queue_id = ${queue} ;
+      `
+    await client.query(queryStr)
+  } catch (err) {
+    customLogger("error", red, `error in 'deleteTasks': ${err.message}`)
   }
 }
 
@@ -131,11 +140,11 @@ const deleteQueue = async queue => {
   try {
     const queryStr = `
       DELETE FROM queues
-      WHERE id = ${queue} ;
+      WHERE id = ${queue};    
       `
     await client.query(queryStr)
   } catch (err) {
-    customLogger("error", red, `Error in createQueue: ${err.stack}`)
+    customLogger("error", red, `error in 'deleteQueue': ${err.message}`)
   }
 }
 
@@ -143,4 +152,5 @@ module.exports = {
   createQueueAndAddTasks,
   addTasks,
   deleteQueue,
+  deleteTasks,
 }
