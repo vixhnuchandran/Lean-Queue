@@ -2,8 +2,12 @@ const express = require("express")
 const routes = require("./routes")
 const { pool } = require("./db")
 require("dotenv").config()
-
-const INTERNAL_SERVER_ERROR = "Internal server error"
+const {
+  INTERNAL_SERVER_ERROR,
+  HTTP_OK,
+  HTTP_BAD_REQUEST,
+  HTTP_INTERNAL_SERVER_ERROR,
+} = require("./constants")
 
 const app = express()
 
@@ -18,19 +22,20 @@ app.use(async (req, res, next) => {
 
 // routes
 app.get("/", (req, res) => {
-  res.sendStatus(200)
+  res.sendStatus(HTTP_OK)
 })
 app.use("/", routes)
 app.get("/*", (req, res) => {
-  res.sendStatus(404)
+  res.sendStatus(HTTP_BAD_REQUEST)
 })
 
 // error handler
 app.use((err, req, res, next) => {
   console.error(err.stack)
-  res.status(500).send({ error: INTERNAL_SERVER_ERROR })
+  res.status(HTTP_INTERNAL_SERVER_ERROR).send({ error: INTERNAL_SERVER_ERROR })
   if (req.dbClient) {
     req.dbClient.release()
+    next()
   }
 })
 
