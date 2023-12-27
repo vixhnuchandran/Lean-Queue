@@ -33,6 +33,7 @@ require("dotenv").config()
 routes.post("/create-queue", async (req, res) => {
   client = req.dbClient
   let requestBody
+
   try {
     if (!req.body) throw new ValidationError("empty request body")
 
@@ -43,7 +44,6 @@ routes.post("/create-queue", async (req, res) => {
       throw new ValidationError("type and tasks are required.")
 
     validateQueueType(type)
-
     validateTasks(tasks)
 
     if (options) validateOptions(options)
@@ -70,6 +70,7 @@ routes.post("/create-queue", async (req, res) => {
   }
 })
 
+// ✅
 routes.post("/add-tasks", async (req, res) => {
   client = req.dbClient
   let requestBody
@@ -112,8 +113,11 @@ routes.post("/get-next-available-task", async (req, res) => {
 
   try {
     if (!req.body) throw new ValidationError("empty request body")
+
     requestBody = req.body
+
     const { queue, type, tags } = requestBody
+
     if (!queue && !type && !tags)
       throw new ValidationError("either queue, type or tags must be specified")
 
@@ -126,8 +130,8 @@ routes.post("/get-next-available-task", async (req, res) => {
 
   try {
     const { queue, type, tags } = requestBody
-
     let nextAvailableTask
+
     if (queue) nextAvailableTask = await getNextAvailableTaskByQueue(queue)
     else if (type) nextAvailableTask = await getNextAvailableTaskByType(type)
     else if (tags) nextAvailableTask = await getNextAvailableTaskByTags(tags)
@@ -173,6 +177,7 @@ routes.get("/get-results/:queue", async (req, res) => {
 
   try {
     if (!req.params.queue) throw new ValidationError("missing queue")
+
     queue = req.params.queue
 
     validateQueueId(queue)
@@ -246,9 +251,11 @@ routes.post("/delete-everything/:queue", async (req, res) => {
     queue = req.params.queue
 
     await deleteTasks(queue)
+
     return res.sendStatus(HTTP_OK)
   } catch (err) {
     handleAppErrors(err, res)
+
     return res.sendStatus(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
     if (req.dbClient) req.dbClient.release()
@@ -273,9 +280,11 @@ routes.post("/delete-queue/:queue", async (req, res) => {
     queue = req.params.queue
 
     await deleteQueue(queue, res)
+
     return res.sendStatus(HTTP_OK)
   } catch (err) {
     handleAppErrors(err, res)
+
     return res.sendStatus(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
     if (req.dbClient) req.dbClient.release()
