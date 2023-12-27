@@ -154,7 +154,8 @@ pnpm start
 
   ```
 
-  ![Alt text](<Screenshot from 2023-12-27 19-44-53.png>)
+  ![Screenshot from 2023-12-27 19-44-53](https://github.com/vixhnuchandran/lean-queue/assets/56486732/8deff803-1be2-4d15-84c9-f27e03c77198)
+
 
 - **Queue Result:**
   Retrieve the results of completed tasks and tasks with errors for a specific queue.
@@ -164,8 +165,8 @@ pnpm start
   GET /get-results/<queueId>
 
   ```
+  ![Screenshot from 2023-12-27 19-50-31](https://github.com/vixhnuchandran/lean-queue/assets/56486732/4803c6f4-452b-4189-bbab-e42eb4491946)
 
-  ![Alt text](image-1.png)
 
 # Worker
 
@@ -195,7 +196,8 @@ pnpm start
 
 #### with halt_n_execute flag true
 
-![Alt text](image.png)
+![Screenshot from 2023-12-27 19-33-37](https://github.com/vixhnuchandran/lean-queue/assets/56486732/5dd1d6f8-add9-4489-b81e-2b5a25bdbb8d)
+
 
 ## License
 
