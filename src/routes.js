@@ -15,6 +15,7 @@ const {
   getResults,
 } = require("./functions/task")
 const {
+  validateNonEmptyRequestBody,
   validateQueueType,
   validateQueueId,
   validateOptions,
@@ -23,6 +24,7 @@ const {
 const { ValidationError, handleAppErrors } = require("./error")
 const {
   INTERNAL_SERVER_ERROR,
+  HTTP_NO_CONTENT,
   HTTP_OK,
   HTTP_BAD_REQUEST,
   HTTP_INTERNAL_SERVER_ERROR,
@@ -35,8 +37,7 @@ routes.post("/create-queue", async (req, res) => {
   let requestBody
 
   try {
-    if (!req.body || Object.keys(req.body).length === 0)
-      throw new ValidationError("empty request body")
+    validateNonEmptyRequestBody(req)
 
     requestBody = req.body
     const { type, tasks, options, tags } = requestBody
@@ -45,6 +46,7 @@ routes.post("/create-queue", async (req, res) => {
       throw new ValidationError("type and tasks are required.")
 
     validateQueueType(type)
+
     validateTasks(tasks)
 
     if (options) validateOptions(options)
@@ -78,8 +80,7 @@ routes.post("/add-tasks", async (req, res) => {
   let requestBody
 
   try {
-    if (!req.body || Object.keys(req.body).length === 0)
-      throw new ValidationError("empty request body")
+    validateNonEmptyRequestBody(req)
 
     requestBody = req.body
     const { queue, tasks, options } = requestBody
@@ -115,8 +116,7 @@ routes.post("/get-next-available-task", async (req, res) => {
   let requestBody
 
   try {
-    if (!req.body || Object.keys(req.body).length === 0)
-      throw new ValidationError("empty request body")
+    validateNonEmptyRequestBody(req)
 
     requestBody = req.body
 
@@ -141,7 +141,7 @@ routes.post("/get-next-available-task", async (req, res) => {
     else if (tags) nextAvailableTask = await getNextAvailableTaskByTags(tags)
 
     if (!nextAvailableTask)
-      return res.status(HTTP_BAD_REQUEST).json({
+      return res.status(HTTP_NO_CONTENT).json({
         message: "No available task found",
       })
 
@@ -194,7 +194,7 @@ routes.get("/get-results/:queue", async (req, res) => {
 
     if (Object.keys(response.results).length === 0)
       return res
-        .status(HTTP_BAD_REQUEST)
+        .status(HTTP_NO_CONTENT)
         .json({ message: "No completed tasks found" })
     else return res.status(HTTP_OK).json(response)
   } catch (err) {
@@ -221,7 +221,7 @@ routes.get("/status/:queue", async (req, res) => {
 
   try {
     const { total_jobs, completed_count, error_count } = await getStatus(
-      parseInt(queue)
+      parseInt(queue, 10)
     )
 
     return res.status(HTTP_OK).json({
@@ -252,15 +252,11 @@ routes.post("/delete-everything/:queue", async (req, res) => {
   }
 
   try {
-    queue = req.params.queue
-
     await deleteTasks(queue)
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
     return handleAppErrors(err, res)
-
-    return res.sendStatus(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
@@ -281,15 +277,11 @@ routes.post("/delete-queue/:queue", async (req, res) => {
   }
 
   try {
-    queue = req.params.queue
-
     await deleteQueue(queue, res)
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
     return handleAppErrors(err, res)
-
-    return res.sendStatus(HTTP_INTERNAL_SERVER_ERROR)
   } finally {
     if (req.dbClient) req.dbClient.release()
   }
