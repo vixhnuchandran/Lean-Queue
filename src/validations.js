@@ -70,7 +70,14 @@ const validateTasks = tasks => {
   })
 }
 
+const validateNonEmptyRequestBody = req => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    throw new ValidationError("empty request body")
+  }
+}
+
 module.exports = {
+  validateNonEmptyRequestBody,
   validateQueueType,
   validateQueueId,
   validateOptions,
