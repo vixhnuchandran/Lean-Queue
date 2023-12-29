@@ -1,19 +1,4 @@
 const routes = require("express").Router()
-const { customLogger, red } = require("./utils")
-const {
-  createQueueAndAddTasks,
-  addTasks,
-  deleteTasks,
-  deleteQueue,
-} = require("./functions/queue")
-const {
-  getNextAvailableTaskByType,
-  getNextAvailableTaskByQueue,
-  getNextAvailableTaskByTags,
-  submitResults,
-  getStatus,
-  getResults,
-} = require("./functions/task")
 const {
   validateNonEmptyRequestBody,
   validateQueueType,
@@ -21,43 +6,39 @@ const {
   validateOptions,
   validateTasks,
 } = require("./validations")
-const { ValidationError, handleAppErrors } = require("./error")
-const {
-  INTERNAL_SERVER_ERROR,
-  HTTP_NO_CONTENT,
-  HTTP_OK,
-  HTTP_BAD_REQUEST,
-  HTTP_INTERNAL_SERVER_ERROR,
-} = require("./constants")
+const { ValidationError } = require("./error")
+const { HTTP_NO_CONTENT, HTTP_OK } = require("./constants")
+const { logger } = require("./utils")
+
 require("dotenv").config()
 
-// ✅
-routes.post("/create-queue", async (req, res) => {
-  client = req.dbClient
+routes.post("/create-queue", async (req, res, next) => {
+  logger.info(
+    `Incoming client request for 'create-queue' with requestId ${req.requestId}`
+  )
+
   let requestBody
 
   try {
     validateNonEmptyRequestBody(req)
-
     requestBody = req.body
     const { type, tasks, options, tags } = requestBody
 
-    if (!type || !tasks)
-      throw new ValidationError("type and tasks are required.")
-
+    if (!type) throw new ValidationError("type is required.")
     validateQueueType(type)
 
+    if (!tasks) throw new ValidationError("tasks are required.")
     validateTasks(tasks)
 
     if (options) validateOptions(options)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   }
 
   try {
     const { type, tasks, options, tags } = requestBody
 
-    const { queue, numTasks } = await createQueueAndAddTasks(
+    const { queue, numTasks } = await req.queryManager.createQueueAndAddTasks(
       type,
       tasks,
       tags,
@@ -68,51 +49,55 @@ routes.post("/create-queue", async (req, res) => {
 
     return res.status(HTTP_OK).json(result)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
   }
 })
 
-// ✅
-routes.post("/add-tasks", async (req, res) => {
-  client = req.dbClient
+routes.post("/add-tasks", async (req, res, next) => {
+  logger.info(
+    `Incoming client request for 'add-tasks' with requestId ${req.requestId}`
+  )
+
   let requestBody
 
   try {
     validateNonEmptyRequestBody(req)
 
     requestBody = req.body
+
     const { queue, tasks, options } = requestBody
 
-    if (!queue || !tasks)
-      throw new ValidationError("queue and tasks are required.")
+    if (!queue) throw new ValidationError("queue is required.")
+    await validateQueueId(queue, req.queryManager)
 
-    validateQueueId(queue)
-
+    if (!tasks) throw new ValidationError("tasks are required.")
     validateTasks(tasks)
 
     if (options) validateOptions(options)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   }
 
   try {
     const { queue, tasks, options } = requestBody
 
-    const numTasks = await addTasks(queue, tasks, options)
+    const numTasks = await req.queryManager.addTasks(queue, tasks, options)
 
     return res.json({ numTasks })
   } catch (err) {
-    return handleAppErrors(err, res)
+    console.log("add-tasks-error: ", err.message)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
   }
 })
 
-// ✅
-routes.post("/get-next-available-task", async (req, res) => {
-  client = req.dbClient
+routes.post("/get-next-available-task", async (req, res, next) => {
+  logger.info(
+    `Incoming worker request for 'get-next-available-task' with requestId ${req.requestId}`
+  )
   let requestBody
 
   try {
@@ -129,16 +114,25 @@ routes.post("/get-next-available-task", async (req, res) => {
 
     if (type) validateQueueType(type)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   }
 
   try {
     const { queue, type, tags } = requestBody
     let nextAvailableTask
 
-    if (queue) nextAvailableTask = await getNextAvailableTaskByQueue(queue)
-    else if (type) nextAvailableTask = await getNextAvailableTaskByType(type)
-    else if (tags) nextAvailableTask = await getNextAvailableTaskByTags(tags)
+    if (queue)
+      nextAvailableTask = await req.queryManager.getNextAvailableTaskByQueue(
+        queue
+      )
+    else if (type)
+      nextAvailableTask = await req.queryManager.getNextAvailableTaskByType(
+        type
+      )
+    else if (tags)
+      nextAvailableTask = await req.queryManager.getNextAvailableTaskByTags(
+        tags
+      )
 
     if (!nextAvailableTask)
       return res.status(HTTP_NO_CONTENT).json({
@@ -151,32 +145,33 @@ routes.post("/get-next-available-task", async (req, res) => {
       type: nextAvailableTask.queue_type,
     })
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
   }
 })
 
-// ✅
-routes.post("/submit-results", async (req, res) => {
-  client = req.dbClient
-
+routes.post("/submit-results", async (req, res, next) => {
+  logger.info(
+    `Incoming worker request for 'submit-results' with requestId ${req.requestId}`
+  )
   try {
     const { id, result, error } = req.body
 
-    await submitResults({ id, result, error })
+    await req.queryManager.submitResults({ id, result, error })
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
   }
 })
 
-// ✅
-routes.get("/get-results/:queue", async (req, res) => {
-  client = req.dbClient
+routes.get("/get-results/:queue", async (req, res, next) => {
+  logger.info(
+    `Incoming client request for 'get-results' with requestId ${req.requestId}`
+  )
   let queue
 
   try {
@@ -184,13 +179,13 @@ routes.get("/get-results/:queue", async (req, res) => {
 
     queue = req.params.queue
 
-    validateQueueId(queue)
+    validateQueueId(queue, req.queryManager)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   }
 
   try {
-    const response = await getResults(queue)
+    const response = await req.queryManager.getResults(queue)
 
     if (Object.keys(response.results).length === 0)
       return res
@@ -198,15 +193,16 @@ routes.get("/get-results/:queue", async (req, res) => {
         .json({ message: "No completed tasks found" })
     else return res.status(HTTP_OK).json(response)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
   }
 })
 
-// ✅
-routes.get("/status/:queue", async (req, res) => {
-  client = req.dbClient
+routes.get("/status/:queue", async (req, res, next) => {
+  logger.info(
+    `Incoming client request for 'status' with requestId ${req.requestId}`
+  )
   let queue
 
   try {
@@ -214,15 +210,14 @@ routes.get("/status/:queue", async (req, res) => {
 
     queue = req.params.queue
 
-    validateQueueId(queue)
+    validateQueueId(queue, req.queryManager)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   }
 
   try {
-    const { total_jobs, completed_count, error_count } = await getStatus(
-      parseInt(queue, 10)
-    )
+    const { total_jobs, completed_count, error_count } =
+      await req.queryManager.getStatus(parseInt(queue, 10))
 
     return res.status(HTTP_OK).json({
       totalTasks: total_jobs,
@@ -230,60 +225,49 @@ routes.get("/status/:queue", async (req, res) => {
       errorTasks: error_count,
     })
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
   }
 })
 
-// ✅
-routes.post("/delete-everything/:queue", async (req, res) => {
-  client = req.dbClient
-  let queue
-
-  try {
-    if (!req.params.queue) throw new ValidationError("missing queue")
-
-    queue = req.params.queue
-
-    validateQueueId(queue)
-  } catch (err) {
-    return handleAppErrors(err, res)
-  }
-
-  try {
-    await deleteTasks(queue)
-
-    return res.sendStatus(HTTP_OK)
-  } catch (err) {
-    return handleAppErrors(err, res)
-  } finally {
-    if (req.dbClient) req.dbClient.release()
-  }
-})
-
-// ✅
-routes.post("/delete-queue/:queue", async (req, res) => {
-  client = req.dbClient
+routes.post("/delete-queue/:queue", async (req, res, next) => {
+  logger.info(
+    `Incoming client request for 'delete-queue' with requestId ${req.requestId}`
+  )
   let queue
   try {
     if (!req.params.queue) throw new ValidationError("missing queue")
 
     queue = req.params.queue
 
-    validateQueueId(queue)
+    validateQueueId(queue, req.queryManager)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   }
 
   try {
-    await deleteQueue(queue, res)
+    await req.queryManager.deleteQueue(queue)
 
     return res.sendStatus(HTTP_OK)
   } catch (err) {
-    return handleAppErrors(err, res)
+    return next(err)
   } finally {
-    if (req.dbClient) req.dbClient.release()
+    return next()
+  }
+})
+
+routes.delete("/delete-everything", async (req, res, next) => {
+  logger.info(
+    `Incoming client request for 'delete-everything' with requestId ${req.requestId}`
+  )
+  try {
+    await req.queryManager.deleteEverything()
+    return res.sendStatus(HTTP_OK)
+  } catch (err) {
+    return next(err)
+  } finally {
+    return next()
   }
 })
 
