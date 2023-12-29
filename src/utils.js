@@ -19,16 +19,43 @@ const blue = text => colorize(text, "blue")
 const magenta = text => colorize(text, "magenta")
 const cyan = text => colorize(text, "cyan")
 
-const customLogger = (consoleMethod, color, consoleMessage, ...args) => {
-  console[consoleMethod](color(consoleMessage))
+function getCurrentTimestamp() {
+  const now = new Date()
+  const timestamp = `[${now.toLocaleString()}]`
+  return timestamp
+}
+
+const logger = {
+  info: function (message, ...args) {
+    console.info(
+      `${getCurrentTimestamp()} [${cyan(`INFO`)}] ${cyan(message, ...args)}`
+    )
+  },
+  log: function (message, ...args) {
+    console.log(
+      `${getCurrentTimestamp()} [${green(`LOG`)}] ${green(message, ...args)}`
+    )
+  },
+  trace: function (message, ...args) {
+    console.trace(
+      `${getCurrentTimestamp()} [${magenta(`TRACE`)}] ${magenta(
+        message,
+        ...args
+      )}`
+    )
+  },
+  warn: function (message, ...args) {
+    console.warn(
+      `${getCurrentTimestamp()} [${yellow(`WARN`)}] ${yellow(message, ...args)}`
+    )
+  },
+  error: function (message, ...args) {
+    console.error(
+      `${getCurrentTimestamp()} [${red(`ERROR`)}] ${red(message, ...args)}`
+    )
+  },
 }
 
 module.exports = {
-  customLogger,
-  red,
-  green,
-  yellow,
-  blue,
-  magenta,
-  cyan,
+  logger,
 }
