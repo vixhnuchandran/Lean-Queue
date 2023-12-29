@@ -1,26 +1,25 @@
 const { ValidationError, QueueError } = require("./error")
+const { logger } = require("./utils")
 
-const validateQueueId = async queueId => {
-  if (Number.isInteger(queueId) && queueId <= 0)
+const validateQueueId = async (queueId, QM) => {
+  if (!Number.isInteger(queueId) || queueId <= 0)
     throw new ValidationError(`invalid queue id`)
 
-  doesQueueExist(queueId)
-
-  return true
+  if (!(await doesQueueExist(QM, queueId))) {
+    throw new QueueError(`queue id does not exist`)
+  }
 }
 
-const doesQueueExist = async queueId => {
-  try {
-    const queryStr = `
+const doesQueueExist = async (QM, queueId) => {
+  const queryStr = `
       SELECT EXISTS 
         (SELECT 1 FROM queues WHERE id = $1);
     `
-    const response = await client.query(queryStr, [queueId])
-    if (!response.rows[0].exists) throw new QueueError(`queue does not exist`)
-  } catch (error) {
-    console.error(`Error in doesQueueExist: ${error.message}`)
+  const response = await QM.client.query(queryStr, [queueId])
+  if (!response.rows[0].exists) {
     return false
   }
+  return true
 }
 
 const validateQueueType = type => {
@@ -55,10 +54,17 @@ const validateTasks = tasks => {
     if (typeof task !== "object")
       throw new ValidationError(`tasks[${i}]: not an object`)
 
+    if (Object.keys(task).length <= 0)
+      throw new ValidationError(`tasks[${i}]: is empty`)
+
     if (task.taskId === undefined || task.taskId === null)
       throw new ValidationError(`tasks[${i}]: taskId missing`)
 
-    if (task.params === undefined || task.params === null)
+    if (
+      task.params === undefined ||
+      task.params === null ||
+      Object.keys(task.params).length <= 0
+    )
       throw new ValidationError(`tasks[${i}]: params missing`)
 
     if (task.priority !== undefined && task.priority !== null) {
