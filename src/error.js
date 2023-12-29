@@ -1,7 +1,6 @@
-const { customLogger, red } = require("./utils")
+const { logger } = require("./utils")
 const {
   INTERNAL_SERVER_ERROR,
-  HTTP_OK,
   HTTP_BAD_REQUEST,
   HTTP_INTERNAL_SERVER_ERROR,
 } = require("./constants")
@@ -22,35 +21,38 @@ class ValidationError extends Error {
   }
 }
 
-const handleCustomError = (err, res) => {
+const handleCustomError = (err, req, res) => {
   if (err instanceof ValidationError || err instanceof QueueError) {
-    customLogger("error", red, `${err.constructor.name}: ${err.message}`)
+    logger.error(`${err.constructor.name}: ${err.message}`)
     return res.status(HTTP_BAD_REQUEST).json({ error: err.message })
   }
 
-  customLogger("error", red, `error: ${err.message}\n${err.stack}`)
+  logger.error(`error: ${err.message}`)
   return res
     .status(HTTP_INTERNAL_SERVER_ERROR)
     .json({ error: INTERNAL_SERVER_ERROR })
 }
 
-const handleUnknownError = (err, res) => {
-  customLogger("error", red, `error: ${err.message}\n${err.stack}`)
+const handleUnknownError = (err, req, res) => {
+  logger.error(`error: ${err.message}`)
+  if (req.QM && req.QM.client) {
+    req.QM.client.release()
+  }
   return res
     .status(HTTP_INTERNAL_SERVER_ERROR)
     .json({ error: INTERNAL_SERVER_ERROR })
 }
 
-const handleAppErrors = (err, res) => {
+const handleAppErrors = (err, req, res, next) => {
   if (err instanceof ValidationError || err instanceof QueueError) {
-    handleCustomError(err, res)
+    return handleCustomError(err, req, res)
   } else {
-    handleUnknownError(err, res)
+    return handleUnknownError(err, req, res)
   }
 }
 
 module.exports = {
-  QueueError,
   ValidationError,
+  QueueError,
   handleAppErrors,
 }
