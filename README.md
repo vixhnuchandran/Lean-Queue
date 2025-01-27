@@ -1,4 +1,4 @@
-# LeanQueue
+# Lean Queue
 
 LeanQueue is a Node.js application designed to manage task queues. It uses Express as a web framework and PostgreSQL for data storage.
 
@@ -25,10 +25,12 @@ LeanQueue is a Node.js application designed to manage task queues. It uses Expre
 ### Installation
 
 1. Clone the repository:
+Owner avatar
+Lean-Queue
 
    ```bash
-   git clone https://github.com/vixhnuchandran/lean-queue
-   cd lean-queue
+   git clone https://github.com/vixhnuchandran/Lean-Queue
+   cd Lean-Queue
    ```
 
 2. Install dependencies:
@@ -154,7 +156,7 @@ pnpm start
 
   ```
 
-  ![Screenshot from 2023-12-27 19-44-53](https://github.com/vixhnuchandran/lean-queue/assets/56486732/8deff803-1be2-4d15-84c9-f27e03c77198)
+  ![Screenshot from 2023-12-27 19-44-53](https://github.com/vixhnuchandran/Lean-Queue/assets/56486732/8deff803-1be2-4d15-84c9-f27e03c77198)
 
 
 - **Queue Result:**
@@ -165,7 +167,7 @@ pnpm start
   GET /get-results/<queueId>
 
   ```
-  ![Screenshot from 2023-12-27 19-50-31](https://github.com/vixhnuchandran/lean-queue/assets/56486732/4803c6f4-452b-4189-bbab-e42eb4491946)
+  ![Screenshot from 2023-12-27 19-50-31](https://github.com/vixhnuchandran/Lean-Queue/assets/56486732/4803c6f4-452b-4189-bbab-e42eb4491946)
 
 
 # Worker
@@ -196,9 +198,8 @@ pnpm start
 
 #### with halt_n_execute flag true
 
-![Screenshot from 2023-12-27 19-33-37](https://github.com/vixhnuchandran/lean-queue/assets/56486732/5dd1d6f8-add9-4489-b81e-2b5a25bdbb8d)
+![Screenshot from 2023-12-27 19-33-37](https://github.com/vixhnuchandran/Lean-Queue/assets/56486732/5dd1d6f8-add9-4489-b81e-2b5a25bdbb8d)
 
 
 ## License
-
 This project is licensed under the MIT License
